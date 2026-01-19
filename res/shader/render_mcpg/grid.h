@@ -8,6 +8,8 @@ struct MCState {
     float sum_w;
     float w_cos;
 
+    int test;
+
     f16vec3 mv;
     float T;
 
