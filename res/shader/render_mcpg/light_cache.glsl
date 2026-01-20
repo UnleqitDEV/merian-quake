@@ -57,9 +57,11 @@ void light_cache_update(const vec3 pos, const vec3 normal, const vec3 irr) {
     const uint buf_idx = hash_grid_normal_level(grid_idx, normal, level, LIGHT_CACHE_BUFFER_SIZE);
     
     const uint old = atomicExchange(light_cache[buf_idx].lock, params.frame);
-    if (old == params.frame)
+    if (old == params.frame) {
         // did not get lock
+        atomicAdd(light_cache[buf_idx].update_canceled, 1);
         return;
+    }
 
     LightCacheVertex vtx = light_cache[buf_idx];
 
@@ -77,5 +79,6 @@ void light_cache_update(const vec3 pos, const vec3 normal, const vec3 irr) {
 
     light_cache[buf_idx] = vtx;
 
+    atomicAdd(light_cache[buf_idx].update_succeeded, 1);
     light_cache[buf_idx].lock = 0;
 }
