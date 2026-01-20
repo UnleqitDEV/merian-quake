@@ -279,8 +279,8 @@ void RendererMarkovChain::process(merian_nodes::GraphRun& run,
         cmd->dispatch(io[con_resolution], local_size_x, local_size_y);
     }
 
-    if (!dumping && dump_mc) {
-        dumping = true;
+    if (!dumping_hashgrid && dump_mc) {
+        dumping_hashgrid = true;
         const std::size_t count = mc_adaptive_buffer_size;
         const merian::MemoryAllocationHandle memory = allocator->getStaging()->cmd_from_device(
             cmd, io[con_markovchain], 0, sizeof(MCState) * count);
@@ -301,11 +301,40 @@ void RendererMarkovChain::process(merian_nodes::GraphRun& run,
             memory->unmap();
             std::ofstream file("mc_dump.json");
             file << std::setw(2) << j << '\n';
-            dumping = false;
+            dumping_hashgrid = false;
         });
 
         dump_mc = false;
     }
+
+    if (!dumping_light_cache && dump_lc) {
+        dumping_light_cache = true;
+        const std::size_t count = lc_buffer_size;
+        const merian::MemoryAllocationHandle memory = allocator->getStaging()->cmd_from_device(
+            cmd, io[con_lightcache], 0, sizeof(LightCacheVertex) * count);
+        run.sync_to_cpu([count, memory, this]() {
+            nlohmann::json j;
+
+            LightCacheVertex* buf = memory->map_as<LightCacheVertex>();
+            for (const LightCacheVertex* v = buf; v < buf + count; v++) {
+                nlohmann::json o;
+                o["hash"] = v->hash;
+                o["irr"] = v->irr;
+                o["N"] = v->N;
+                o["update_succeeded"] = v->update_succeeded;
+                o["update_canceled"] = v->update_canceled;
+
+                j.emplace_back(o);
+            }
+            memory->unmap();
+            std::ofstream file("lc_dump.json");
+            file << std::setw(2) << j << '\n';
+            dumping_light_cache = false;
+        });
+
+        dump_lc = false;
+    }
+
 }
 
 RendererMarkovChain::NodeStatusFlags RendererMarkovChain::properties(merian::Properties& config) {
@@ -418,11 +447,18 @@ RendererMarkovChain::NodeStatusFlags RendererMarkovChain::properties(merian::Pro
                           {"light cache", "mc weight", "mc mean direction", "mc grid", "irradiance",
                            "moments", "mc cos", "mc N", "mc motion vectors"});
     needs_pipeline_rebuild |= config.config_bool("recreate pipeline");
-    if (!dumping) {
+    if (!dumping_hashgrid) {
         dump_mc = config.config_bool("Download Adaptive Grid",
                                  "Dumps the states as json into mc_dump.json");
     } else {
         config.output_text("Dumping to mc_dump.json...");
+    }
+
+    if (!dumping_light_cache) {
+        dump_lc = config.config_bool("Download Light Cache",
+                                 "Dumps the Light Cache as json into lc_dump.json");
+    } else {
+        config.output_text("Dumping to lc_dump.json...");
     }
 
 

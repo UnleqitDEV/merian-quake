@@ -8,8 +8,6 @@ struct MCState {
     float sum_w;
     float w_cos;
 
-    int test;
-
     f16vec3 mv;
     float T;
 
@@ -22,6 +20,10 @@ struct LightCacheVertex {
     uint lock;
     f16vec3 irr;
     uint16_t N;
+
+    // atomic counters to check locking performance
+    uint update_succeeded;
+    uint update_canceled;
 };
 
 struct DistanceMCState {

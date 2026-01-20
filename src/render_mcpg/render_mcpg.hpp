@@ -115,7 +115,10 @@ class RendererMarkovChain : public merian_nodes::Node {
     float volume_particle_size_um = 25.0;
 
     bool dump_mc = false;
-    std::atomic_bool dumping = false;
+    std::atomic_bool dumping_hashgrid = false;
+
+    bool dump_lc = false;
+    std::atomic_bool dumping_light_cache = false;
 
     int32_t mc_samples = 5;
     float mc_samples_adaptive_prob = 0.7;
