@@ -43,7 +43,7 @@ def find_next_opening_brace(file_path: str, start_pos: int) -> int:
     Returns:
         Byte position of next '{', or -1 if none found
     """
-    with open(file_path, 'rb') as f:
+    with open(file_path, 'rb', buffering=1024*1024) as f:
         f.seek(start_pos)
         
         position: int = start_pos
@@ -130,8 +130,8 @@ def process_chunk(args: Tuple[str, int, int, int, Any]) -> Dict[str, int]:
             
             bytes_read += 1
             
-            # Update progress every 100KB
-            if bytes_read % 100000 == 0:
+            # Update progress every 1MB
+            if bytes_read % 1000000 == 0:
                 progress_dict[chunk_id] = (bytes_read / max_bytes) * 100.0
             
             if byte == b'{':
@@ -175,7 +175,7 @@ def progress_monitor(progress_dict: Dict[int, float], num_chunks: int, stop_even
         # Output with carriage return (overwrites previous line)
         print(f"\rProgress: {avg_progress:.2f}%", end='', flush=True)
         
-        time.sleep(1)
+        time.sleep(0.3)
     
     # Final newline after completion
     print()
@@ -251,7 +251,7 @@ if __name__ == "__main__":
     
     json_file: str = sys.argv[1]
     num_threads: int = int(sys.argv[2]) if len(sys.argv) > 2 else (os.cpu_count() or 4)
-    
+
     print(f"CPU Cores available: {os.cpu_count()}")
     print(f"Using {num_threads} threads")
     print(f"Analyzing file: {json_file}")
