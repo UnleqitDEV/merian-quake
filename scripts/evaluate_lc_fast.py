@@ -10,19 +10,19 @@ import threading
 
 def calculate_rough_boundaries(file_path: str, num_threads: int) -> List[int]:
     """
-    Berechnet grobe Chunk-Grenzen basierend auf Dateigröße.
+    Calculates rough chunk boundaries based on file size.
     
     Args:
-        file_path: Pfad zur JSON-Datei
-        num_threads: Anzahl der Threads/Chunks
+        file_path: Path to JSON file
+        num_threads: Number of threads/chunks
     
     Returns:
-        Liste von groben Byte-Positionen
+        List of rough byte positions
     """
     file_size: int = os.path.getsize(file_path)
     chunk_size: int = file_size // num_threads
     
-    # Erste Boundary ist immer 0, danach grobe Unterteilungen
+    # First boundary is always 0, then rough subdivisions
     boundaries: List[int] = [0]
     
     for i in range(1, num_threads):
@@ -34,14 +34,14 @@ def calculate_rough_boundaries(file_path: str, num_threads: int) -> List[int]:
 
 def find_next_opening_brace(file_path: str, start_pos: int) -> int:
     """
-    Sucht ab einer gegebenen Position die nächste öffnende geschweifte Klammer '{'.
+    Searches for the next opening brace '{' from a given position.
     
     Args:
-        file_path: Pfad zur JSON-Datei
-        start_pos: Startposition für die Suche
+        file_path: Path to JSON file
+        start_pos: Start position for search
     
     Returns:
-        Byte-Position der nächsten '{', oder -1 wenn keine gefunden
+        Byte position of next '{', or -1 if none found
     """
     with open(file_path, 'rb') as f:
         f.seek(start_pos)
@@ -50,11 +50,11 @@ def find_next_opening_brace(file_path: str, start_pos: int) -> int:
         while True:
             byte: bytes = f.read(1)
             if not byte:
-                # Ende der Datei erreicht
+                # End of file reached
                 return -1
             
             if byte == b'{':
-                # Position der '{' gefunden
+                # Found position of '{'
                 return position
             
             position += 1
@@ -62,33 +62,33 @@ def find_next_opening_brace(file_path: str, start_pos: int) -> int:
 
 def find_chunk_boundaries(file_path: str, num_threads: int) -> List[int]:
     """
-    Findet exakte Chunk-Grenzen, die auf '{' Zeichen liegen.
+    Finds exact chunk boundaries that align with '{' characters.
     
     Args:
-        file_path: Pfad zur JSON-Datei
-        num_threads: Anzahl der Threads/Chunks
+        file_path: Path to JSON file
+        num_threads: Number of threads/chunks
     
     Returns:
-        Liste von exakten Byte-Positionen für Chunk-Starts
+        List of exact byte positions for chunk starts
     """
     rough_boundaries: List[int] = calculate_rough_boundaries(file_path, num_threads)
-    exact_boundaries: List[int] = [0]  # Erste Boundary bleibt bei 0
+    exact_boundaries: List[int] = [0]  # First boundary stays at 0
     
-    # Für alle groben Boundaries (außer der ersten) die exakte Position finden
+    # Find exact position for all rough boundaries (except the first)
     for rough_pos in rough_boundaries[1:]:
         exact_pos: int = find_next_opening_brace(file_path, rough_pos)
         
         if exact_pos != -1:
             exact_boundaries.append(exact_pos)
         else:
-            # Keine weitere '{' gefunden, wir sind am Ende
+            # No more '{' found, we're at the end
             break
     
     return exact_boundaries
 
 
 def process_element(element: Dict[str, Any], stats: Dict[str, int]) -> None:
-    """Verarbeite ein einzelnes JSON-Element und aktualisiere Statistiken"""
+    """Process a single JSON element and update statistics"""
     canceled: int = element.get('update_canceled', 0)
     succeeded: int = element.get('update_succeeded', 0)
     
@@ -99,13 +99,13 @@ def process_element(element: Dict[str, Any], stats: Dict[str, int]) -> None:
 
 def process_chunk(args: Tuple[str, int, int, int, Any]) -> Dict[str, int]:
     """
-    Verarbeitet einen Chunk der JSON-Datei.
+    Processes a chunk of the JSON file.
     
     Args:
-        args: Tuple von (file_path, start_byte, end_byte, chunk_id, progress_dict)
+        args: Tuple of (file_path, start_byte, end_byte, chunk_id, progress_dict)
     
     Returns:
-        Dictionary mit Statistiken für diesen Chunk
+        Dictionary with statistics for this chunk
     """
     file_path, start_byte, end_byte, chunk_id, progress_dict = args
     stats: Dict[str, int] = {
@@ -130,7 +130,7 @@ def process_chunk(args: Tuple[str, int, int, int, Any]) -> Dict[str, int]:
             
             bytes_read += 1
             
-            # Update progress alle 100KB
+            # Update progress every 100KB
             if bytes_read % 100000 == 0:
                 progress_dict[chunk_id] = (bytes_read / max_bytes) * 100.0
             
@@ -142,7 +142,7 @@ def process_chunk(args: Tuple[str, int, int, int, Any]) -> Dict[str, int]:
                 bracket_count -= 1
                 
                 if bracket_count == 0 and buffer.strip():
-                    # Komplettes Objekt gefunden
+                    # Complete object found
                     try:
                         element: Dict[str, Any] = json.loads(buffer.decode('utf-8').strip())
                         process_element(element, stats)
@@ -160,37 +160,37 @@ def process_chunk(args: Tuple[str, int, int, int, Any]) -> Dict[str, int]:
 
 def progress_monitor(progress_dict: Dict[int, float], num_chunks: int, stop_event: threading.Event) -> None:
     """
-    Überwacht den Fortschritt und gibt Updates aus.
+    Monitors progress and prints updates.
     
     Args:
-        progress_dict: Shared dictionary mit Progress-Werten pro Chunk
-        num_chunks: Gesamtzahl der Chunks
-        stop_event: Event zum Beenden des Monitors
+        progress_dict: Shared dictionary with progress values per chunk
+        num_chunks: Total number of chunks
+        stop_event: Event to stop the monitor
     """
     while not stop_event.is_set():
-        # Berechne Gesamt-Progress
+        # Calculate total progress
         total_progress: float = sum(progress_dict.get(i, 0.0) for i in range(num_chunks))
         avg_progress: float = total_progress / num_chunks if num_chunks > 0 else 0.0
         
-        # Ausgabe mit Carriage Return (überschreibt vorherige Zeile)
+        # Output with carriage return (overwrites previous line)
         print(f"\rProgress: {avg_progress:.2f}%", end='', flush=True)
         
         time.sleep(1)
     
-    # Final newline nach Completion
+    # Final newline after completion
     print()
 
 
 def parallel_stream_json(file_path: str, num_threads: int) -> Dict[str, int]:
     """
-    Verarbeitet JSON-Datei parallel mit mehreren Prozessen.
+    Processes JSON file in parallel with multiple processes.
     
     Args:
-        file_path: Pfad zur JSON-Datei
-        num_threads: Anzahl der parallelen Prozesse
+        file_path: Path to JSON file
+        num_threads: Number of parallel processes
     
     Returns:
-        Aggregierte Statistiken über alle Chunks
+        Aggregated statistics across all chunks
     """
     print(f"\nFinding chunk boundaries...")
     boundaries: List[int] = find_chunk_boundaries(file_path, num_threads)
@@ -204,7 +204,7 @@ def parallel_stream_json(file_path: str, num_threads: int) -> Dict[str, int]:
     for i in range(len(boundaries)):
         progress_dict[i] = 0.0
     
-    # Erstelle Chunk-Argumente: (file_path, start, end, chunk_id, progress_dict)
+    # Create chunk arguments: (file_path, start, end, chunk_id, progress_dict)
     chunk_args: List[Tuple[str, int, int, int, Any]] = []
     for i in range(len(boundaries)):
         start: int = boundaries[i]
@@ -214,7 +214,7 @@ def parallel_stream_json(file_path: str, num_threads: int) -> Dict[str, int]:
     print(f"\nProcessing {len(chunk_args)} chunks in parallel...\n")
     start_time: float = time.time()
     
-    # Starte Progress Monitor Thread
+    # Start progress monitor thread
     stop_event = threading.Event()
     monitor_thread = threading.Thread(
         target=progress_monitor,
@@ -222,17 +222,17 @@ def parallel_stream_json(file_path: str, num_threads: int) -> Dict[str, int]:
     )
     monitor_thread.start()
     
-    # Parallel verarbeiten
+    # Process in parallel
     with ProcessPoolExecutor(max_workers=num_threads) as executor:
         results: List[Dict[str, int]] = list(executor.map(process_chunk, chunk_args))
     
-    # Stoppe Progress Monitor
+    # Stop progress monitor
     stop_event.set()
     monitor_thread.join()
     
     end_time: float = time.time()
     
-    # Aggregiere Ergebnisse
+    # Aggregate results
     total_stats: Dict[str, int] = {
         'total_canceled': sum(r['total_canceled'] for r in results),
         'total_succeeded': sum(r['total_succeeded'] for r in results),
@@ -260,7 +260,7 @@ if __name__ == "__main__":
         stats: Dict[str, int] = parallel_stream_json(json_file, num_threads)
         
         print("\n" + "="*50)
-        print("GESAMTSTATISTIK")
+        print("OVERALL STATISTICS")
         print("="*50)
         print(f"Total processed: {stats['total_processed']}")
         print(f"Total canceled: {stats['total_canceled']}")
@@ -273,12 +273,12 @@ if __name__ == "__main__":
             print(f"\n{percent_canceled:.2f}% failed")
             print(f"{percent_succeeded:.2f}% succeeded")
         else:
-            print("\nKeine Updates gefunden")
+            print("\nNo updates found")
         
-        print("\n✓ Verarbeitung abgeschlossen")
+        print("\n✓ Processing completed")
     except FileNotFoundError:
-        print(f"Fehler: Datei '{json_file}' nicht gefunden")
+        print(f"Error: File '{json_file}' not found")
     except Exception as e:
-        print(f"Fehler: {e}")
+        print(f"Error: {e}")
         import traceback
         traceback.print_exc()
