@@ -159,6 +159,13 @@ void mc_state_add_sample(inout MCState mc_state,
                          const float w,          // goodness
                          const vec3 target, const f16vec3 target_mv, const vec3 normal) {    // ray hit point
 
+    //const uint old = atomicExchange(light_cache[buf_idx].lock, params.frame);
+    //if (old == params.frame) {
+        // did not get lock
+    //    atomicAdd(light_cache[buf_idx].update_canceled, 1);
+    //    return;
+    //}
+
     mc_state.N = min(mc_state.N + 1s, uint16_t(ML_MAX_N));
     const float alpha = max(1.0 / mc_state.N, ML_MIN_ALPHA);
 
@@ -173,4 +180,6 @@ void mc_state_add_sample(inout MCState mc_state,
     
     mc_static_save(mc_state, pos, normal);
     mc_adaptive_save(mc_state, pos, normal);
+    
+    //light_cache[buf_idx].lock = 0;
 }
