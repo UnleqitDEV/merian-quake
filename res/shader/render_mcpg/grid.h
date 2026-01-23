@@ -5,6 +5,9 @@
 
 struct MCState {
     uint lock;
+    uint update_succeeded;
+    uint update_canceled;
+
     vec3 w_tgt;
     float sum_w;
     float w_cos;
