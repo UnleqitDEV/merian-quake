@@ -12,7 +12,7 @@
 
 // GENERAL
 
-#define mc_state_new() MCState(0, vec3(0.0), 0.0, 0.0, f16vec3(0), 0.0, 0s, 0s);
+#define mc_state_new() MCState(0, 0, 0, vec3(0.0), 0.0, 0.0, f16vec3(0), 0.0, 0s, 0s);
 
 // return normalized direction (from pos)
 #define mc_state_dir(mc_state, pos) normalize((mc_state.sum_w > 0.0 ? mc_state.w_tgt / mc_state.sum_w : mc_state.w_tgt) - pos)
@@ -89,6 +89,7 @@ void mc_adaptive_finalize_load(inout MCState mc_state, const uint16_t hash) {
     if (mc_state.sum_w < 0 || hash != mc_state.hash) {
         mc_state.sum_w = 0.;
     }
+    // adds last movement to current pos
     mc_state.w_tgt += mc_state.sum_w * (params.cl_time - mc_state.T) * mc_state.mv;
 }
 
@@ -154,17 +155,23 @@ void mc_static_save(in MCState mc_state, const vec3 pos, const vec3 normal) {
 }
 
 // add sample to lobe via maximum likelihood estimator and exponentially weighted average
-void mc_state_add_sample(inout MCState mc_state,
+void mc_state_add_sample(inout MCState prev_mc_state,
                          const vec3 pos,         // position where the ray started
                          const float w,          // goodness
-                         const vec3 target, const f16vec3 target_mv, const vec3 normal) {    // ray hit point
+                         const vec3 target, const f16vec3 target_mv, const vec3 normal, const uint mc_buffer_index) {    // ray hit point
 
-    //const uint old = atomicExchange(light_cache[buf_idx].lock, params.frame);
-    //if (old == params.frame) {
+
+
+    const uint old = atomicExchange(mc_states[mc_buffer_index].lock, params.frame);
+    if (old == params.frame) {
         // did not get lock
-    //    atomicAdd(light_cache[buf_idx].update_canceled, 1);
-    //    return;
-    //}
+        atomicAdd(mc_states[mc_buffer_index].update_canceled, 1);
+        return;
+    }
+    
+    memoryBarrierBuffer();
+
+    MCState mc_state = mc_states[mc_buffer_index];
 
     mc_state.N = min(mc_state.N + 1s, uint16_t(ML_MAX_N));
     const float alpha = max(1.0 / mc_state.N, ML_MIN_ALPHA);
@@ -176,10 +183,12 @@ void mc_state_add_sample(inout MCState mc_state,
 
     mc_state.mv = target_mv;
     mc_state.T = params.cl_time;
+    mc_state.update_succeeded += 1;
 
-    
+    mc_state.lock = 0;
+
     mc_static_save(mc_state, pos, normal);
     mc_adaptive_save(mc_state, pos, normal);
     
-    //light_cache[buf_idx].lock = 0;
+    memoryBarrierBuffer();
 }

@@ -75,10 +75,10 @@ void main() {
                 {
                     [[unroll]]
                     for (int i = 0; i < MC_SAMPLES; i++) {
-                        const bool adaptive_grid = XorShift32(rng_state) < MC_SAMPLES_ADAPTIVE_PROB;
+                        const bool adaptive_grid_prob = XorShift32(rng_state) < MC_SAMPLES_ADAPTIVE_PROB;
                         
                         uint buffer_index; uint16_t hash;
-                        if (adaptive_grid) {
+                        if (adaptive_grid_prob) {
                             mc_adaptive_buffer_index(s == 0 ? current_hit.prev_pos : current_hit.pos, current_hit.normal, buffer_index, hash);
                         } else {
                             mc_static_buffer_index(s == 0 ? current_hit.prev_pos : current_hit.pos, buffer_index, hash);
@@ -86,7 +86,8 @@ void main() {
 
                         MCState state = mc_states[buffer_index];
 
-                        if (adaptive_grid) {
+                        
+                        if (adaptive_grid_prob) {
                             mc_adaptive_finalize_load(state, hash);
                         } else {
                             mc_static_finalize_load(state, hash, current_hit.pos, current_hit.normal);
@@ -170,7 +171,7 @@ void main() {
 
                     if (XorShift32(rng_state) * score_sum < mc_f * MC_SAMPLES) {
                         // == XorShift32(rng_state) < mc_f / (score_sum / MC_SAMPLES)
-                        mc_state_add_sample(mc_state, current_hit.pos, mc_f, next_hit.pos, f16vec3((next_hit.pos - next_hit.prev_pos) / TIME_DIFF), current_hit.normal);
+                        mc_state_add_sample(mc_state, current_hit.pos, mc_f, next_hit.pos, f16vec3((next_hit.pos - next_hit.prev_pos) / TIME_DIFF), current_hit.normal, mc_buffer_index);
                     } else if (MC_FAST_RECOVERY == 1 && mc_buffer_index != -1 && mc_light_missing(mc_state, mc_f, wo, current_hit.pos)) {
                         // fix slow recovery after light source disappears
                         mc_states[mc_buffer_index].sum_w = 0.;

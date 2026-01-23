@@ -218,7 +218,7 @@ void main() {
             const float mc_f = yuv_luminance(phase * incident / wo_p);
             if (XorShift32(rng_state) < mc_f / (score_sum / MC_SAMPLES)) {
                 const vec3 jittered_normal = make_frame(-first_wi) * sample_cos(XorShift32Vec2(rng_state));
-                mc_state_add_sample(mc_state, current_hit.pos, mc_f, next_hit.pos, f16vec3((next_hit.pos - next_hit.prev_pos) / TIME_DIFF), jittered_normal);
+                mc_state_add_sample(mc_state, current_hit.pos, mc_f, next_hit.pos, f16vec3((next_hit.pos - next_hit.prev_pos) / TIME_DIFF), jittered_normal, mc_buffer_index);
 
                 // save happens in mc_state_add_sample()
                 //mc_static_save(mc_state, current_hit.pos, jittered_normal);
