@@ -1,0 +1,33 @@
+#version 460
+#extension GL_GOOGLE_include_directive              : enable
+#extension GL_EXT_ray_tracing                       : enable
+#extension GL_EXT_ray_query                         : enable
+#extension GL_EXT_ray_tracing_position_fetch        : enable
+#extension GL_EXT_shader_explicit_arithmetic_types  : enable
+#extension GL_EXT_nonuniform_qualifier              : enable
+#extension GL_EXT_control_flow_attributes           : enable
+#extension GL_KHR_shader_subgroup_ballot            : enable
+#extension GL_KHR_shader_subgroup_arithmetic        : enable
+
+#include "merian-shaders/camera.glsl"
+#include "merian-shaders/random.glsl"
+#include "merian-shaders/normal_encode.glsl"
+#include "merian-shaders/raytrace.glsl"
+#include "merian-shaders/bsdf_diffuse.glsl"
+#include "merian-shaders/grid.glsl"
+#include "merian-shaders/color/colors_yuv.glsl"
+#include "merian-shaders/color/colors_oklch.glsl"
+#include "merian-shaders/hash.glsl"
+#include "merian-shaders/bsdf_ggx.glsl"
+#include "merian-shaders/bsdf_microfacet.glsl"
+#include "merian-shaders/image_buffer.glsl.h"
+
+#include "../config.h"
+#include "layout.glsl"
+#include "light_cache.glsl"
+#include "mc.glsl"
+#include "../raytrace.glsl"
+
+void main() {
+
+}
