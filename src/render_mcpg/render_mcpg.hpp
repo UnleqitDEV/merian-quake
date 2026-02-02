@@ -83,6 +83,8 @@ class RendererMarkovChain : public merian_nodes::Node {
     merian_nodes::ManagedVkImageOutHandle con_volume_depth;
     merian_nodes::ManagedVkImageOutHandle con_volume_mv;
 
+    
+    merian_nodes::ManagedVkBufferOutHandle con_update_buffer;
     merian_nodes::ManagedVkBufferOutHandle con_markovchain;
     merian_nodes::ManagedVkBufferOutHandle con_lightcache;
     merian_nodes::ManagedVkBufferOutHandle con_volume_distancemc;

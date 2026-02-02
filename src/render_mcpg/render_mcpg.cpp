@@ -61,6 +61,7 @@ RendererMarkovChain::describe_outputs(const merian_nodes::NodeIOLayout& io_layou
                                  vk::BufferUsageFlagBits::eTransferDst |
                                  vk::BufferUsageFlagBits::eTransferSrc},
         true);
+
     con_lightcache = std::make_shared<merian_nodes::ManagedVkBufferOut>(
         "lightcache", vk::AccessFlagBits2::eMemoryRead | vk::AccessFlagBits2::eMemoryWrite,
         vk::PipelineStageFlagBits2::eComputeShader | vk::PipelineStageFlagBits2::eTransfer,
@@ -84,9 +85,19 @@ RendererMarkovChain::describe_outputs(const merian_nodes::NodeIOLayout& io_layou
                                  vk::BufferUsageFlagBits::eTransferSrc},
         true);
 
+    con_update_buffer = std::make_shared<merian_nodes::ManagedVkBufferOut>(
+        "update_buffer", vk::AccessFlagBits2::eMemoryRead | vk::AccessFlagBits2::eMemoryWrite,
+        vk::PipelineStageFlagBits2::eComputeShader | vk::PipelineStageFlagBits2::eTransfer,
+        vk::ShaderStageFlagBits::eCompute,
+        vk::BufferCreateInfo{{},
+                             (mc_adaptive_buffer_size + mc_static_buffer_size) * sizeof(MCState),
+                             vk::BufferUsageFlagBits::eStorageBuffer |
+                                 vk::BufferUsageFlagBits::eTransferDst |
+                                 vk::BufferUsageFlagBits::eTransferSrc},
+        true);
     return {
-        con_irradiance, con_volume,      con_volume_depth, con_volume_mv,
-        con_debug,      con_markovchain, con_lightcache,   con_volume_distancemc,
+        con_irradiance,  con_volume,     con_volume_depth,      con_volume_mv,     con_debug,
+        con_markovchain, con_lightcache, con_volume_distancemc, con_update_buffer,
     };
 }
 
@@ -204,6 +215,7 @@ void RendererMarkovChain::process(merian_nodes::GraphRun& run,
         cmd->fill(io[con_markovchain]);
         cmd->fill(io[con_lightcache]);
         cmd->fill(io[con_volume_distancemc]);
+        cmd->fill(io[con_update_buffer]);
 
         const std::array<vk::BufferMemoryBarrier, 3> barriers = {
             io[con_markovchain]->buffer_barrier(vk::AccessFlagBits::eTransferWrite,
@@ -212,6 +224,8 @@ void RendererMarkovChain::process(merian_nodes::GraphRun& run,
                                                vk::AccessFlagBits::eShaderRead),
             io[con_volume_distancemc]->buffer_barrier(vk::AccessFlagBits::eTransferWrite,
                                                       vk::AccessFlagBits::eShaderRead),
+            io[con_update_buffer]->buffer_barrier(vk::AccessFlagBits::eTransferWrite,
+                                                  vk::AccessFlagBits::eShaderRead),
         };
 
         cmd->barrier(vk::PipelineStageFlagBits::eTransfer,
@@ -336,7 +350,6 @@ void RendererMarkovChain::process(merian_nodes::GraphRun& run,
 
         dump_lc = false;
     }
-
 }
 
 RendererMarkovChain::NodeStatusFlags RendererMarkovChain::properties(merian::Properties& config) {
@@ -451,18 +464,17 @@ RendererMarkovChain::NodeStatusFlags RendererMarkovChain::properties(merian::Pro
     needs_pipeline_rebuild |= config.config_bool("recreate pipeline");
     if (!dumping_hashgrid) {
         dump_mc = config.config_bool("Download Adaptive Grid",
-                                 "Dumps the states as json into mc_dump.json");
+                                     "Dumps the states as json into mc_dump.json");
     } else {
         config.output_text("Dumping to mc_dump.json...");
     }
 
     if (!dumping_light_cache) {
         dump_lc = config.config_bool("Download Light Cache",
-                                 "Dumps the Light Cache as json into lc_dump.json");
+                                     "Dumps the Light Cache as json into lc_dump.json");
     } else {
         config.output_text("Dumping to lc_dump.json...");
     }
-
 
     // Only require a pipeline recreation
     if (needs_pipeline_rebuild || old_spp != spp || old_max_path_lenght != max_path_length ||

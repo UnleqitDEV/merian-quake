@@ -108,6 +108,14 @@ void mc_adaptive_save(in MCState mc_state, const vec3 pos, const vec3 normal) {
     mc_states[buffer_index] = mc_state;
 }
 
+void mc_adaptive_save_to_buffer(in MCState mc_state, const vec3 pos, const vec3 normal) {
+    uint buffer_index; uint16_t hash;
+    mc_adaptive_buffer_index(pos, normal, buffer_index, hash);
+
+    mc_state.hash = hash;
+    update_buffer[buffer_index] = mc_state;
+}
+
 
 // STATIC GRID
 
@@ -154,6 +162,14 @@ void mc_static_save(in MCState mc_state, const vec3 pos, const vec3 normal) {
     mc_states[buffer_index] = mc_state;
 }
 
+void mc_static_save_to_buffer(in MCState mc_state, const vec3 pos, const vec3 normal) {
+    uint buffer_index; uint16_t hash;
+    mc_static_buffer_index(pos, buffer_index, hash);
+
+    mc_state.hash = hash;
+    update_buffer[buffer_index] = mc_state;
+}
+
 // add sample to lobe via maximum likelihood estimator and exponentially weighted average
 void mc_state_add_sample(inout MCState prev_mc_state,
                          const vec3 pos,         // position where the ray started
@@ -187,8 +203,10 @@ void mc_state_add_sample(inout MCState prev_mc_state,
 
     mc_state.lock = 0;
 
-    mc_static_save(mc_state, pos, normal);
-    mc_adaptive_save(mc_state, pos, normal);
+    //mc_static_save(mc_state, pos, normal);
+    //mc_adaptive_save(mc_state, pos, normal);
+    mc_static_save_to_buffer(mc_state, pos, normal);
+    mc_adaptive_save_to_buffer(mc_state, pos, normal);
     
     memoryBarrierBuffer();
 }
