@@ -176,17 +176,6 @@ void mc_state_add_sample(inout MCState prev_mc_state,
                          const float w,          // goodness
                          const vec3 target, const f16vec3 target_mv, const vec3 normal, const uint mc_buffer_index) {    // ray hit point
 
-
-
-    const uint old = atomicExchange(mc_states[mc_buffer_index].lock, params.frame);
-    if (old == params.frame) {
-        // did not get lock
-        atomicAdd(mc_states[mc_buffer_index].update_canceled, 1);
-        return;
-    }
-    
-    memoryBarrierBuffer();
-
     MCState mc_state = mc_states[mc_buffer_index];
 
     mc_state.N = min(mc_state.N + 1s, uint16_t(ML_MAX_N));
@@ -207,6 +196,4 @@ void mc_state_add_sample(inout MCState prev_mc_state,
     //mc_adaptive_save(mc_state, pos, normal);
     mc_static_save_to_buffer(mc_state, pos, normal);
     mc_adaptive_save_to_buffer(mc_state, pos, normal);
-    
-    memoryBarrierBuffer();
 }

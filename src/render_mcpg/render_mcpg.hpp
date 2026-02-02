@@ -52,6 +52,7 @@ class RendererMarkovChain : public merian_nodes::Node {
     const merian::ContextHandle context;
     const merian::ResourceAllocatorHandle allocator;
 
+    merian::ShaderModuleHandle update_shader;
     merian::ShaderModuleHandle rt_shader;
     merian::ShaderModuleHandle clear_shader;
     merian::ShaderModuleHandle volume_shader;
@@ -83,7 +84,7 @@ class RendererMarkovChain : public merian_nodes::Node {
     merian_nodes::ManagedVkImageOutHandle con_volume_depth;
     merian_nodes::ManagedVkImageOutHandle con_volume_mv;
 
-    
+    int32_t update_buffer_size;
     merian_nodes::ManagedVkBufferOutHandle con_update_buffer;
     merian_nodes::ManagedVkBufferOutHandle con_markovchain;
     merian_nodes::ManagedVkBufferOutHandle con_lightcache;
@@ -94,6 +95,7 @@ class RendererMarkovChain : public merian_nodes::Node {
     merian::DescriptorSetLayoutHandle graph_desc_set_layout;
     merian::PipelineLayoutHandle pipe_layout;
 
+    merian::PipelineHandle update_pipe;
     merian::PipelineHandle pipe;
     merian::PipelineHandle clear_pipe;
     merian::PipelineHandle volume_pipe;

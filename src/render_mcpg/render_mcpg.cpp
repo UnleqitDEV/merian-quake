@@ -85,12 +85,13 @@ RendererMarkovChain::describe_outputs(const merian_nodes::NodeIOLayout& io_layou
                                  vk::BufferUsageFlagBits::eTransferSrc},
         true);
 
+        update_buffer_size = (mc_adaptive_buffer_size + mc_static_buffer_size);
     con_update_buffer = std::make_shared<merian_nodes::ManagedVkBufferOut>(
         "update_buffer", vk::AccessFlagBits2::eMemoryRead | vk::AccessFlagBits2::eMemoryWrite,
         vk::PipelineStageFlagBits2::eComputeShader | vk::PipelineStageFlagBits2::eTransfer,
         vk::ShaderStageFlagBits::eCompute,
         vk::BufferCreateInfo{{},
-                             (mc_adaptive_buffer_size + mc_static_buffer_size) * sizeof(MCState),
+                             update_buffer_size * sizeof(MCState),
                              vk::BufferUsageFlagBits::eStorageBuffer |
                                  vk::BufferUsageFlagBits::eTransferDst |
                                  vk::BufferUsageFlagBits::eTransferSrc},
@@ -121,7 +122,7 @@ void RendererMarkovChain::process(merian_nodes::GraphRun& run,
     const QuakeNode::QuakeRenderInfo& render_info = *io[con_render_info];
 
     // (RE-) CREATE PIPELINE
-    if (render_info.constant_data_update || !pipe || !clear_pipe || !volume_pipe ||
+    if (render_info.constant_data_update || !pipe || !clear_pipe || !volume_pipe || !update_pipe ||
         !volume_forward_project_pipe) {
         if (randomize_seed) {
             std::random_device dev;
@@ -182,6 +183,9 @@ void RendererMarkovChain::process(merian_nodes::GraphRun& run,
             {"DEBUG_OUTPUT_SELECTOR", std::to_string(debug_output_selector)},
         };
 
+        update_shader = run.get_shader_compiler()->find_compile_glsl_to_shadermodule(
+            context, "shader/render_mcpg/compute_updates.comp", std::nullopt, {},
+            additional_macro_definitions);
         rt_shader = run.get_shader_compiler()->find_compile_glsl_to_shadermodule(
             context, "shader/render_mcpg/mcpg.comp", std::nullopt, {},
             additional_macro_definitions);
@@ -203,6 +207,7 @@ void RendererMarkovChain::process(merian_nodes::GraphRun& run,
         auto spec = spec_builder.build();
 
         pipe = std::make_shared<merian::ComputePipeline>(pipe_layout, rt_shader, spec);
+        update_pipe = std::make_shared<merian::ComputePipeline>(pipe_layout, update_shader, spec);
         clear_pipe = std::make_shared<merian::ComputePipeline>(pipe_layout, clear_shader, spec);
         volume_pipe = std::make_shared<merian::ComputePipeline>(pipe_layout, volume_shader, spec);
         volume_forward_project_pipe = std::make_shared<merian::ComputePipeline>(
@@ -217,7 +222,7 @@ void RendererMarkovChain::process(merian_nodes::GraphRun& run,
         cmd->fill(io[con_volume_distancemc]);
         cmd->fill(io[con_update_buffer]);
 
-        const std::array<vk::BufferMemoryBarrier, 3> barriers = {
+        const std::array<vk::BufferMemoryBarrier, 4> barriers = {
             io[con_markovchain]->buffer_barrier(vk::AccessFlagBits::eTransferWrite,
                                                 vk::AccessFlagBits::eShaderRead),
             io[con_lightcache]->buffer_barrier(vk::AccessFlagBits::eTransferWrite,
@@ -249,6 +254,22 @@ void RendererMarkovChain::process(merian_nodes::GraphRun& run,
         cmd->bind_descriptor_set(pipe, graph_descriptor_set);
         cmd->push_constant(pipe, render_info.uniform);
         cmd->dispatch(io[con_resolution], local_size_x, local_size_y);
+
+
+        // Update buffer
+        const std::array<vk::BufferMemoryBarrier, 1> barriers = {
+            io[con_update_buffer]->buffer_barrier(vk::AccessFlagBits::eShaderWrite,
+                                                  vk::AccessFlagBits::eShaderRead)};
+
+        cmd->barrier(vk::PipelineStageFlagBits::eComputeShader,
+                     vk::PipelineStageFlagBits::eComputeShader, barriers);
+
+        cmd->bind(update_pipe);
+        cmd->bind_descriptor_set(update_pipe, graph_descriptor_set);
+        // possible not needed
+        cmd->push_constant(pipe, render_info.uniform);
+
+        cmd->dispatch(update_buffer_size, 1, 1);
     }
 
     const bool enable_volume = io.is_connected(con_volume);
