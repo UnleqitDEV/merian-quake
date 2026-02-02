@@ -19,6 +19,19 @@ struct MCState {
     uint16_t hash; // grid_idx and level
 };
 
+struct MCUpdate {
+    uint update_count;
+
+    vec3 target;
+    float weight;
+    float cos;
+
+    f16vec3 mv;
+    float T;
+
+    uint16_t N;
+};
+
 struct LightCacheVertex {
     uint hash; // grid_idx and level
     uint lock;

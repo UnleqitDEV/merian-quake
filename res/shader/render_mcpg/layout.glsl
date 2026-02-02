@@ -187,5 +187,5 @@ layout(set = 0, binding = 16, scalar) buffer restrict buf_dist_mc_states {
     DistanceMCVertex distance_mc_states[];
 };
 layout(set = 0, binding = 17, scalar) buffer restrict buf_update_buffer {
-    MCState update_buffer[];
+    MCUpdate update_buffer[];
 };

@@ -10,6 +10,8 @@
 #endif
 #endif
 
+#extension GL_EXT_shader_atomic_float               : enable
+
 // GENERAL
 
 #define mc_state_new() MCState(0, 0, 0, vec3(0.0), 0.0, 0.0, f16vec3(0), 0.0, 0s, 0s);
@@ -108,14 +110,6 @@ void mc_adaptive_save(in MCState mc_state, const vec3 pos, const vec3 normal) {
     mc_states[buffer_index] = mc_state;
 }
 
-void mc_adaptive_save_to_buffer(in MCState mc_state, const vec3 pos, const vec3 normal) {
-    uint buffer_index; uint16_t hash;
-    mc_adaptive_buffer_index(pos, normal, buffer_index, hash);
-
-    mc_state.hash = hash;
-    update_buffer[buffer_index] = mc_state;
-}
-
 
 // STATIC GRID
 
@@ -162,21 +156,29 @@ void mc_static_save(in MCState mc_state, const vec3 pos, const vec3 normal) {
     mc_states[buffer_index] = mc_state;
 }
 
-void mc_static_save_to_buffer(in MCState mc_state, const vec3 pos, const vec3 normal) {
-    uint buffer_index; uint16_t hash;
-    mc_static_buffer_index(pos, buffer_index, hash);
+void send_update_to_buffer(const float weight, const vec3 target, const float cos, const uint16_t N, const uint index, const f16vec3 target_mv) {
+    atomicAdd(update_buffer[index].weight, weight);
+    atomicAdd(update_buffer[index].target.x, target.x);
+    atomicAdd(update_buffer[index].target.y, target.y);
+    atomicAdd(update_buffer[index].target.z, target.z);
+    atomicAdd(update_buffer[index].cos, cos);
+    atomicAdd(update_buffer[index].update_count, 1);
 
-    mc_state.hash = hash;
-    update_buffer[buffer_index] = mc_state;
+    update_buffer[index].mv = target_mv;
+    update_buffer[index].T = params.cl_time;
+    update_buffer[index].N = N;
 }
 
 // add sample to lobe via maximum likelihood estimator and exponentially weighted average
-void mc_state_add_sample(inout MCState prev_mc_state,
+void mc_state_add_sample(inout MCState mc_state,
                          const vec3 pos,         // position where the ray started
                          const float w,          // goodness
                          const vec3 target, const f16vec3 target_mv, const vec3 normal, const uint mc_buffer_index) {    // ray hit point
 
-    MCState mc_state = prev_mc_state;
+    float cos = w * max(0, dot(normalize(target - pos), mc_state_dir(mc_state, pos)));
+    send_update_to_buffer(w, w* target, cos, mc_state.N, mc_buffer_index, target_mv);
+
+    /*MCState mc_state = prev_mc_state;
 
     mc_state.N = min(mc_state.N + 1s, uint16_t(ML_MAX_N));
     const float alpha = max(1.0 / mc_state.N, ML_MIN_ALPHA);
@@ -191,9 +193,8 @@ void mc_state_add_sample(inout MCState prev_mc_state,
     mc_state.update_succeeded += 1;
 
     mc_state.lock = 0;
+    */
 
     //mc_static_save(mc_state, pos, normal);
     //mc_adaptive_save(mc_state, pos, normal);
-    mc_static_save_to_buffer(mc_state, pos, normal);
-    mc_adaptive_save_to_buffer(mc_state, pos, normal);
 }

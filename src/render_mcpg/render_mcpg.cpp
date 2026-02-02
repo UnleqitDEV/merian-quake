@@ -91,7 +91,7 @@ RendererMarkovChain::describe_outputs(const merian_nodes::NodeIOLayout& io_layou
         vk::PipelineStageFlagBits2::eComputeShader | vk::PipelineStageFlagBits2::eTransfer,
         vk::ShaderStageFlagBits::eCompute,
         vk::BufferCreateInfo{{},
-                             update_buffer_size * sizeof(MCState),
+                             update_buffer_size * sizeof(MCUpdate),
                              vk::BufferUsageFlagBits::eStorageBuffer |
                                  vk::BufferUsageFlagBits::eTransferDst |
                                  vk::BufferUsageFlagBits::eTransferSrc},
