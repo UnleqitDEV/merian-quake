@@ -28,7 +28,7 @@
 
 void main() {
     MCState mc_state = update_buffer[index];
-    //if(mc_state.N > 0) {
+    if(mc_state.N > 0) {
         mc_states[index] = mc_state;
-    //}
+    }
 }

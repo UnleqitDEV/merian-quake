@@ -176,7 +176,7 @@ void mc_state_add_sample(inout MCState prev_mc_state,
                          const float w,          // goodness
                          const vec3 target, const f16vec3 target_mv, const vec3 normal, const uint mc_buffer_index) {    // ray hit point
 
-    MCState mc_state = mc_states[mc_buffer_index];
+    MCState mc_state = prev_mc_state;
 
     mc_state.N = min(mc_state.N + 1s, uint16_t(ML_MAX_N));
     const float alpha = max(1.0 / mc_state.N, ML_MIN_ALPHA);
