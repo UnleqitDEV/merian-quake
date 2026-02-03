@@ -22,36 +22,67 @@
 #include "merian-shaders/bsdf_microfacet.glsl"
 #include "merian-shaders/image_buffer.glsl.h"
 
-#include "layout.glsl"
+#ifndef UPDATE_BUFFER_SIZE
+#error "UPDATE_BUFFER_SIZE not defined"
+#endif
 
-#define index gl_GlobalInvocationID.x
+#define buffer_idx gl_GlobalInvocationID.x
+#define pixel ivec2(gl_GlobalInvocationID)
 #define ML_MIN_ALPHA .01
 #define ML_MAX_N 1024s
 
+uint rng_state;
+
+#include "layout.glsl"
+#include "mc.glsl"
+
+//layout(local_size_x = 64, local_size_y = 1, local_size_z = 1) in;
+
 void main() {
-    MCUpdate update = update_buffer[index];
-    if(update.update_count > 0) {
-        MCState mc_state = mc_states[index];
+    if (buffer_idx >= 32777259 + 800009) {
+        return;
+    }
 
-        mc_state.N = min(mc_state.N + uint16_t(update.update_count), uint16_t(ML_MAX_N));
-        const float alpha = max(update.update_count / mc_state.N, ML_MIN_ALPHA);
+    mc_states[buffer_idx].update_canceled = 100;
 
-        float weight = update.weight / update.update_count;
-        vec3 target = update.target / update.update_count;
-        float cos = update.cos / update.update_count;
+    //return;
 
-        mc_state.sum_w = mix(mc_state.sum_w, weight, alpha);
-        mc_state.w_tgt = mix(mc_state.w_tgt, target, alpha);
-        mc_state.w_cos = min(mix(mc_state.w_cos, cos, alpha), mc_state.sum_w);
+    if(update_buffer[buffer_idx].update_count > 0) {
+        mc_states[buffer_idx].update_succeeded = 100;
 
-        mc_state.mv = update.mv;
-        mc_state.T = update.T;
+        return;
+        MCUpdate update = update_buffer[buffer_idx];
+        MCState mc_state = mc_states[buffer_idx];
+        rng_state = update.rng_state;
 
-        mc_states[index] = mc_state;
+        //mc_state.N = min(mc_state.N + uint16_t(update.update_count), uint16_t(ML_MAX_N));
+        //const float alpha = max(float(update.update_count) / mc_state.N, ML_MIN_ALPHA);
+        
+        //float weight = update.weight / update.update_count;
+        //vec3 target = update.target / update.update_count;
+        //float cos = update.cos / update.update_count;
 
-        update.update_count = 0;
-        update.target = vec3(0);
-        update.weight = 0;
-        update.cos = 0;
+        mc_states[buffer_idx].N = min(mc_states[buffer_idx].N + 1s, uint16_t(ML_MAX_N));
+        const float alpha = max(1.0 / mc_state.N, ML_MIN_ALPHA);
+
+        float weight = update.weight;
+        vec3 target = update.target;
+        float cos = update.cos;
+
+        mc_states[buffer_idx].sum_w = mix(mc_states[buffer_idx].sum_w, weight, alpha);
+        mc_states[buffer_idx].w_tgt = mix(mc_states[buffer_idx].w_tgt, target, alpha);
+        mc_states[buffer_idx].w_cos = min(mix(mc_states[buffer_idx].w_cos, cos, alpha), mc_state.sum_w);
+
+        mc_states[buffer_idx].mv = update.mv;
+        mc_states[buffer_idx].T = update.T;
+
+        mc_states[buffer_idx] = mc_state;
+        mc_static_save(mc_states[buffer_idx], update.pos, update.normal);
+        mc_adaptive_save(mc_states[buffer_idx], update.pos, update.normal);
+
+        update_buffer[buffer_idx].update_count = 0;
+        //update_buffer[buffer_idx].target = vec3(0);
+        //update_buffer[buffer_idx].weight = 0;
+        //update_buffer[buffer_idx].cos = 0;
     }
 }

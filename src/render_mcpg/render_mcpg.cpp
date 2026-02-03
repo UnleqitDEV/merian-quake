@@ -85,7 +85,7 @@ RendererMarkovChain::describe_outputs(const merian_nodes::NodeIOLayout& io_layou
                                  vk::BufferUsageFlagBits::eTransferSrc},
         true);
 
-        update_buffer_size = (mc_adaptive_buffer_size + mc_static_buffer_size);
+    update_buffer_size = (mc_adaptive_buffer_size + mc_static_buffer_size);
     con_update_buffer = std::make_shared<merian_nodes::ManagedVkBufferOut>(
         "update_buffer", vk::AccessFlagBits2::eMemoryRead | vk::AccessFlagBits2::eMemoryWrite,
         vk::PipelineStageFlagBits2::eComputeShader | vk::PipelineStageFlagBits2::eTransfer,
@@ -135,6 +135,7 @@ void RendererMarkovChain::process(merian_nodes::GraphRun& run,
         const float draine_a = std::exp(3.62489 - 8.29288 / (volume_particle_size_um + 5.52825));
 
         const std::map<std::string, std::string> additional_macro_definitions = {
+            {"UPDATE_BUFFER_SIZE", std::to_string(update_buffer_size)},
             {"MERIAN_QUAKE_REFERENCE_MODE",
              std::to_string(static_cast<int>(reference_mode || surf_bsdf_p == 1.0))},
             {"MERIAN_QUAKE_ADAPTIVE_GRID_TYPE", std::to_string(mc_adaptive_grid_type)},
@@ -259,7 +260,7 @@ void RendererMarkovChain::process(merian_nodes::GraphRun& run,
         // Update buffer
         const std::array<vk::BufferMemoryBarrier, 1> barriers = {
             io[con_update_buffer]->buffer_barrier(vk::AccessFlagBits::eShaderWrite,
-                                                  vk::AccessFlagBits::eShaderRead)};
+                                                  vk::AccessFlagBits::eShaderRead | vk::AccessFlagBits::eShaderWrite)};
 
         cmd->barrier(vk::PipelineStageFlagBits::eComputeShader,
                      vk::PipelineStageFlagBits::eComputeShader, barriers);
@@ -269,7 +270,15 @@ void RendererMarkovChain::process(merian_nodes::GraphRun& run,
         // possible not needed
         cmd->push_constant(pipe, render_info.uniform);
 
+        const uint32_t num_work_groups = (update_buffer_size + 63) / 64;
         cmd->dispatch(update_buffer_size, 1, 1);
+
+        const std::array<vk::BufferMemoryBarrier, 1> barriers2 = {
+            io[con_markovchain]->buffer_barrier(vk::AccessFlagBits::eShaderWrite,
+                                                  vk::AccessFlagBits::eShaderRead | vk::AccessFlagBits::eShaderWrite)};
+
+        cmd->barrier(vk::PipelineStageFlagBits::eComputeShader,
+                     vk::PipelineStageFlagBits::eComputeShader, barriers2);
     }
 
     const bool enable_volume = io.is_connected(con_volume);

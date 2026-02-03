@@ -29,6 +29,10 @@ struct MCUpdate {
     f16vec3 mv;
     float T;
 
+    vec3 pos;
+    vec3 normal;
+    uint rng_state;
+
     uint16_t N;
 };
 
