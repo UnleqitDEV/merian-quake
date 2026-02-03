@@ -176,13 +176,38 @@ void send_update_to_buffer(const float weight, const vec3 target, const float co
     //update_buffer[index].weight = weight;
     //update_buffer[index].target = target;
     //update_buffer[index].cos = cos;
-    update_buffer[index].update_count = 1;
+    update_buffer[index].update_count = 1000;
+    MCState mc_state = mc_states[index];
+    mc_state.N = 200s;
+    mc_static_save(mc_state, pos, normal);
+    mc_adaptive_save(mc_state, pos, normal);
     //update_buffer[index].mv = target_mv;
     //update_buffer[index].T = params.cl_time;
     //update_buffer[index].N = N;
     //update_buffer[index].pos = pos;
     //update_buffer[index].normal = normal;
     //update_buffer[index].rng_state = rng_state;
+    
+    /*
+    MCState mc_state = mc_states[index];
+
+    mc_state.N = min(mc_state.N + 1s, uint16_t(ML_MAX_N));
+    const float alpha = max(1.0 / mc_state.N, ML_MIN_ALPHA);
+
+    mc_state.sum_w = mix(mc_state.sum_w, weight,          alpha);
+    mc_state.w_tgt = mix(mc_state.w_tgt,target, alpha);
+    mc_state.w_cos = min(mix(mc_state.w_cos, cos, alpha), mc_state.sum_w);
+    //mc_state.w_cos = min(length(mix(mc_state.w_cos * mc_state_dir(mc_state, pos), w * normalize(target - pos), alpha)), mc_state.sum_w);
+
+    mc_state.mv = target_mv;
+    mc_state.T = params.cl_time;
+    mc_state.update_succeeded += 1;
+
+    mc_state.lock = 0;
+
+    mc_static_save(mc_state, pos, normal);
+    mc_adaptive_save(mc_state, pos, normal);
+    */
 }
 
 // add sample to lobe via maximum likelihood estimator and exponentially weighted average

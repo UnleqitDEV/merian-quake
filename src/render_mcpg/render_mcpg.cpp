@@ -259,8 +259,7 @@ void RendererMarkovChain::process(merian_nodes::GraphRun& run,
 
         // Update buffer
         const std::array<vk::BufferMemoryBarrier, 1> barriers = {
-            io[con_update_buffer]->buffer_barrier(vk::AccessFlagBits::eShaderWrite,
-                                                  vk::AccessFlagBits::eShaderRead | vk::AccessFlagBits::eShaderWrite)};
+            io[con_update_buffer]->buffer_barrier(vk::AccessFlagBits::eShaderWrite, vk::AccessFlagBits::eShaderRead)};
 
         cmd->barrier(vk::PipelineStageFlagBits::eComputeShader,
                      vk::PipelineStageFlagBits::eComputeShader, barriers);
@@ -272,13 +271,6 @@ void RendererMarkovChain::process(merian_nodes::GraphRun& run,
 
         const uint32_t num_work_groups = (update_buffer_size + 63) / 64;
         cmd->dispatch(update_buffer_size, 1, 1);
-
-        const std::array<vk::BufferMemoryBarrier, 1> barriers2 = {
-            io[con_markovchain]->buffer_barrier(vk::AccessFlagBits::eShaderWrite,
-                                                  vk::AccessFlagBits::eShaderRead | vk::AccessFlagBits::eShaderWrite)};
-
-        cmd->barrier(vk::PipelineStageFlagBits::eComputeShader,
-                     vk::PipelineStageFlagBits::eComputeShader, barriers2);
     }
 
     const bool enable_volume = io.is_connected(con_volume);

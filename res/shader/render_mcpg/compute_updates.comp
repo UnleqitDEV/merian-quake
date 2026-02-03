@@ -51,6 +51,7 @@ void main() {
         mc_states[buffer_idx].update_succeeded = 100;
 
         return;
+        /*
         MCUpdate update = update_buffer[buffer_idx];
         MCState mc_state = mc_states[buffer_idx];
         rng_state = update.rng_state;
@@ -84,5 +85,7 @@ void main() {
         //update_buffer[buffer_idx].target = vec3(0);
         //update_buffer[buffer_idx].weight = 0;
         //update_buffer[buffer_idx].cos = 0;
+
+        */
     }
 }
