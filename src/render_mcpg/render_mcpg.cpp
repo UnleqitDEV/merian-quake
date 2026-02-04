@@ -269,7 +269,8 @@ void RendererMarkovChain::process(merian_nodes::GraphRun& run,
         // possible not needed
         cmd->push_constant(pipe, render_info.uniform);
 
-        const uint32_t num_work_groups = (update_buffer_size + 63) / 64;
+        // does not work
+        //const uint32_t num_work_groups = (update_buffer_size + 63) / 64;
         cmd->dispatch(update_buffer_size, 1, 1);
     }
 

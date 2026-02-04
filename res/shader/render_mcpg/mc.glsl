@@ -158,35 +158,34 @@ void mc_static_save(in MCState mc_state, const vec3 pos, const vec3 normal) {
 
 void send_update_to_buffer(const float weight, const vec3 target, const float cos, const uint16_t N, const uint index, 
     const f16vec3 target_mv, const vec3 pos, const vec3 normal) {
-        
-    //uint last_count = atomicExchange(update_buffer[index].update_count, 1);
-    //if(last_count != 0) {
-    //    return;
-    //}
 
-/*
+    /* 
+    uint last_count = atomicExchange(update_buffer[index].update_count, 1);
+    if(last_count != 0) {
+        return;
+    }
+    */
+
     atomicAdd(update_buffer[index].weight, weight);
     atomicAdd(update_buffer[index].target.x, target.x);
     atomicAdd(update_buffer[index].target.y, target.y);
     atomicAdd(update_buffer[index].target.z, target.z);
     atomicAdd(update_buffer[index].cos, cos);
     atomicAdd(update_buffer[index].update_count, 1);
-*/
 
-    //update_buffer[index].weight = weight;
-    //update_buffer[index].target = target;
-    //update_buffer[index].cos = cos;
-    update_buffer[index].update_count = 1000;
-    MCState mc_state = mc_states[index];
-    mc_state.N = 200s;
-    mc_static_save(mc_state, pos, normal);
-    mc_adaptive_save(mc_state, pos, normal);
-    //update_buffer[index].mv = target_mv;
-    //update_buffer[index].T = params.cl_time;
-    //update_buffer[index].N = N;
-    //update_buffer[index].pos = pos;
-    //update_buffer[index].normal = normal;
-    //update_buffer[index].rng_state = rng_state;
+    /*
+    update_buffer[index].weight = weight;
+    update_buffer[index].target = target;
+    update_buffer[index].cos = cos;
+    update_buffer[index].update_count = 1;
+    */
+
+    update_buffer[index].mv = target_mv;
+    update_buffer[index].T = params.cl_time;
+    update_buffer[index].N = N;
+    update_buffer[index].pos = pos;
+    update_buffer[index].normal = normal;
+    update_buffer[index].rng_state = rng_state;
     
     /*
     MCState mc_state = mc_states[index];
@@ -216,8 +215,14 @@ void mc_state_add_sample(inout MCState mc_state,
                          const float w,          // goodness
                          const vec3 target, const f16vec3 target_mv, const vec3 normal, const uint mc_buffer_index) {    // ray hit point
 
+    uint index = mc_buffer_index;
+    if(index == -1) {
+        // give it the id of the adaptive grid
+        uint16_t hash;
+        mc_adaptive_buffer_index(pos, normal, index, hash);
+    }
     float cos = w * max(0, dot(normalize(target - pos), mc_state_dir(mc_state, pos)));
-    send_update_to_buffer(w, w * target, cos, mc_state.N, mc_buffer_index, target_mv, pos, normal);
+    send_update_to_buffer(w, w * target, cos, mc_state.N, index, target_mv, pos, normal);
 
     /*
     mc_state = mc_states[mc_buffer_index];
