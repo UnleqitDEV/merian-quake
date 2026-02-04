@@ -159,13 +159,7 @@ void mc_static_save(in MCState mc_state, const vec3 pos, const vec3 normal) {
 void send_update_to_buffer(const float weight, const vec3 target, const float cos, const uint16_t N, const uint index, 
     const f16vec3 target_mv, const vec3 pos, const vec3 normal) {
 
-    /* 
-    uint last_count = atomicExchange(update_buffer[index].update_count, 1);
-    if(last_count != 0) {
-        return;
-    }
-    */
-
+    /*
     atomicAdd(update_buffer[index].weight, weight);
     atomicAdd(update_buffer[index].target.x, target.x);
     atomicAdd(update_buffer[index].target.y, target.y);
@@ -173,21 +167,14 @@ void send_update_to_buffer(const float weight, const vec3 target, const float co
     atomicAdd(update_buffer[index].cos, cos);
     atomicAdd(update_buffer[index].update_count, 1);
 
-    /*
-    update_buffer[index].weight = weight;
-    update_buffer[index].target = target;
-    update_buffer[index].cos = cos;
-    update_buffer[index].update_count = 1;
-    */
-
     update_buffer[index].mv = target_mv;
     update_buffer[index].T = params.cl_time;
     update_buffer[index].N = N;
     update_buffer[index].pos = pos;
     update_buffer[index].normal = normal;
     update_buffer[index].rng_state = rng_state;
+    */
     
-    /*
     MCState mc_state = mc_states[index];
 
     mc_state.N = min(mc_state.N + 1s, uint16_t(ML_MAX_N));
@@ -206,7 +193,7 @@ void send_update_to_buffer(const float weight, const vec3 target, const float co
 
     mc_static_save(mc_state, pos, normal);
     mc_adaptive_save(mc_state, pos, normal);
-    */
+    
 }
 
 // add sample to lobe via maximum likelihood estimator and exponentially weighted average
