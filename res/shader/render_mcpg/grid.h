@@ -21,6 +21,7 @@ struct MCState {
 
 struct MCUpdate {
     uint update_count;
+    uint last_update_count;
 
     vec3 target;
     float weight;

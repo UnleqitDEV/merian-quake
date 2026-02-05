@@ -118,6 +118,9 @@ class RendererMarkovChain : public merian_nodes::Node {
     VkBool32 volume_use_light_cache = 0;
     float volume_particle_size_um = 25.0;
 
+    bool dump_update_buffer = false;
+    std::atomic_bool dumping_update_buffer = false;
+
     bool dump_mc = false;
     std::atomic_bool dumping_hashgrid = false;
 
