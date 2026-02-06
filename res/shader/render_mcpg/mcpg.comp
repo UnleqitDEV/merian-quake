@@ -65,7 +65,8 @@ void main() {
 #else
 
             MCState mc_state;
-            uint mc_buffer_index;
+            // initiate to -1, could otherwise stay uninitialized
+            uint mc_buffer_index = -1;
 
             // SAMPLE NEXT OUTGOING DIRECTION
             float score_sum = 0;
