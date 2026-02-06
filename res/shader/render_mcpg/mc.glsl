@@ -169,20 +169,14 @@ void send_update_to_buffer(const float weight, const vec3 target, const float co
     atomicAdd(update_buffer[index].target.y, target.y);
     atomicAdd(update_buffer[index].target.z, target.z);
     atomicAdd(update_buffer[index].cos, cos);
-    atomicAdd(update_buffer[index].normal.x, normal.x);
-    atomicAdd(update_buffer[index].normal.y, normal.y);
-    atomicAdd(update_buffer[index].normal.z, normal.z);
-    atomicAdd(update_buffer[index].pos.x, pos.x);
-    atomicAdd(update_buffer[index].pos.y, pos.y);
-    atomicAdd(update_buffer[index].pos.z, pos.z);
     uint old = atomicAdd(update_buffer[index].update_count, 1);
 
     if(old == 0) {
         update_buffer[index].mv = target_mv;
         update_buffer[index].T = params.cl_time;
         update_buffer[index].N = N;
-        //update_buffer[index].pos = pos;
-        //update_buffer[index].normal = normal;
+        update_buffer[index].pos = pos;
+        update_buffer[index].normal = normal;
         update_buffer[index].rng_state = rng_state;
     }
     
@@ -217,17 +211,6 @@ void mc_state_add_sample(inout MCState mc_state,
         // give it the index of the adaptive grid
         uint16_t hash;
         mc_adaptive_buffer_index(pos, normal, index, hash);
-
-        mc_state.N = min(mc_state.N + 1s, uint16_t(ML_MAX_N));
-        const float alpha = max(1.0 / mc_state.N, ML_MIN_ALPHA);
-        mc_state.sum_w = mix(mc_state.sum_w, w, alpha);
-        mc_state.w_tgt = mix(mc_state.w_tgt, w * target, alpha);
-        mc_state.w_cos = min(mix(mc_state.w_cos, w * max(0, dot(normalize(target - pos), mc_state_dir(mc_state, pos))), alpha), mc_state.sum_w);
-
-        //mc_static_save(mc_state, pos, normal);
-        mc_adaptive_save(mc_state, pos, normal);
-
-        return;
     }
 
     // update mc state for cos calculation
@@ -239,27 +222,6 @@ void mc_state_add_sample(inout MCState mc_state,
     float cos = w * max(0, dot(normalize(target - pos), mc_state_dir(mc_state, pos)));
 
     send_update_to_buffer(w, w * target, cos, mc_state.N, index, target_mv, pos, normal);
-
-    /*
-    mc_state = mc_states[mc_buffer_index];
-
-    mc_state.N = min(mc_state.N + 1s, uint16_t(ML_MAX_N));
-    const float alpha = max(1.0 / mc_state.N, ML_MIN_ALPHA);
-
-    mc_state.sum_w = mix(mc_state.sum_w, w,          alpha);
-    mc_state.w_tgt = mix(mc_state.w_tgt, w * target, alpha);
-    mc_state.w_cos = min(mix(mc_state.w_cos, w * max(0, dot(normalize(target - pos), mc_state_dir(mc_state, pos))), alpha), mc_state.sum_w);
-    //mc_state.w_cos = min(length(mix(mc_state.w_cos * mc_state_dir(mc_state, pos), w * normalize(target - pos), alpha)), mc_state.sum_w);
-
-    mc_state.mv = target_mv;
-    mc_state.T = params.cl_time;
-    mc_state.update_succeeded += 1;
-
-    mc_state.lock = 0;
-
-    mc_static_save(mc_state, pos, normal);
-    mc_adaptive_save(mc_state, pos, normal);
-    */
 }
 
 // old mc add sample
