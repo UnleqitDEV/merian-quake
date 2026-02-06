@@ -86,7 +86,6 @@ void main() {
                         }
 
                         MCState state = mc_states[buffer_index];
-
                         
                         if (adaptive_grid_prob) {
                             mc_adaptive_finalize_load(state, hash);

@@ -202,17 +202,19 @@ void RendererMarkovChain::process(merian_nodes::GraphRun& run,
                 additional_macro_definitions);
 
         auto spec_builder = merian::SpecializationInfoBuilder();
-
         spec_builder.add_entry(local_size_x, local_size_y);
-
         auto spec = spec_builder.build();
 
         pipe = std::make_shared<merian::ComputePipeline>(pipe_layout, rt_shader, spec);
-        update_pipe = std::make_shared<merian::ComputePipeline>(pipe_layout, update_shader, spec);
         clear_pipe = std::make_shared<merian::ComputePipeline>(pipe_layout, clear_shader, spec);
         volume_pipe = std::make_shared<merian::ComputePipeline>(pipe_layout, volume_shader, spec);
         volume_forward_project_pipe = std::make_shared<merian::ComputePipeline>(
             pipe_layout, volume_forward_project_shader, spec);
+        
+        auto update_spec_builder = merian::SpecializationInfoBuilder();
+        update_spec_builder.add_entry(64);
+        auto update_spec = update_spec_builder.build();
+        update_pipe = std::make_shared<merian::ComputePipeline>(pipe_layout, update_shader, update_spec);
     }
 
     // RESET MARKOV CHAINS AT ITERATION 0
@@ -258,8 +260,10 @@ void RendererMarkovChain::process(merian_nodes::GraphRun& run,
 
 
         // Update buffer
-        const std::array<vk::BufferMemoryBarrier, 1> barriers = {
-            io[con_update_buffer]->buffer_barrier(vk::AccessFlagBits::eShaderWrite, vk::AccessFlagBits::eShaderRead)};
+        const std::array<vk::BufferMemoryBarrier, 2> barriers = {
+            io[con_update_buffer]->buffer_barrier(vk::AccessFlagBits::eShaderWrite, vk::AccessFlagBits::eShaderRead),
+            io[con_markovchain]->buffer_barrier(vk::AccessFlagBits::eShaderWrite, vk::AccessFlagBits::eShaderRead)
+        };
 
         cmd->barrier(vk::PipelineStageFlagBits::eComputeShader,
                      vk::PipelineStageFlagBits::eComputeShader, barriers);
@@ -270,8 +274,8 @@ void RendererMarkovChain::process(merian_nodes::GraphRun& run,
         cmd->push_constant(pipe, render_info.uniform);
 
         // does not work
-        //const uint32_t num_work_groups = (update_buffer_size + 63) / 64;
-        cmd->dispatch(update_buffer_size, 1, 1);
+        const uint32_t num_work_groups = (update_buffer_size + 63) / 64;
+        cmd->dispatch(num_work_groups, 1, 1);
     }
 
     const bool enable_volume = io.is_connected(con_volume);

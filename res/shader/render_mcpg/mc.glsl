@@ -211,6 +211,8 @@ void mc_state_add_sample(inout MCState mc_state,
         // give it the index of the adaptive grid
         uint16_t hash;
         mc_adaptive_buffer_index(pos, normal, index, hash);
+
+        update_buffer[index].clear = true;        
     }
 
     // update mc state for cos calculation

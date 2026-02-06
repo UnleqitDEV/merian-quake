@@ -47,6 +47,10 @@ void main() {
         MCState mc_state = mc_states[update_buffer_idx];
         rng_state = update.rng_state;
 
+        if(update.clear) {
+            mc_state = mc_state_new();
+        }
+
         mc_state.N = min(mc_state.N + uint16_t(update.update_count), uint16_t(ML_MAX_N));
         const float alpha = max(float(update.update_count) / float(mc_state.N), ML_MIN_ALPHA);
         
@@ -58,7 +62,12 @@ void main() {
 
         mc_state.sum_w = mix(mc_state.sum_w, weight, alpha);
         mc_state.w_tgt = mix(mc_state.w_tgt, target, alpha);
-        mc_state.w_cos = min(mix(mc_state.w_cos, cos, alpha), mc_state.sum_w);
+
+        if(update.clear) {
+            mc_state.w_cos = min(1, mc_state.sum_w);
+        } else {
+            mc_state.w_cos = min(mix(mc_state.w_cos, cos, alpha), mc_state.sum_w);
+        }
 
         mc_state.mv = update.mv;
         mc_state.T = update.T;
@@ -72,5 +81,6 @@ void main() {
         update_buffer[update_buffer_idx].target = vec3(0);
         update_buffer[update_buffer_idx].weight = 0;
         update_buffer[update_buffer_idx].cos = 0;
+        update_buffer[update_buffer_idx].clear = false;
     }
 }
