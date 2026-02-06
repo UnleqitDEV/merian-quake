@@ -259,8 +259,7 @@ void RendererMarkovChain::process(merian_nodes::GraphRun& run,
 
         // Update buffer
         const std::array<vk::BufferMemoryBarrier, 1> barriers = {
-            io[con_update_buffer]->buffer_barrier(vk::AccessFlagBits::eShaderWrite,
-                                                  vk::AccessFlagBits::eShaderRead | vk::AccessFlagBits::eShaderWrite)};
+            io[con_update_buffer]->buffer_barrier(vk::AccessFlagBits::eShaderWrite, vk::AccessFlagBits::eShaderRead)};
 
         cmd->barrier(vk::PipelineStageFlagBits::eComputeShader,
                      vk::PipelineStageFlagBits::eComputeShader, barriers);
@@ -270,15 +269,9 @@ void RendererMarkovChain::process(merian_nodes::GraphRun& run,
         // possible not needed
         cmd->push_constant(pipe, render_info.uniform);
 
-        const uint32_t num_work_groups = (update_buffer_size + 63) / 64;
+        // does not work
+        //const uint32_t num_work_groups = (update_buffer_size + 63) / 64;
         cmd->dispatch(update_buffer_size, 1, 1);
-
-        const std::array<vk::BufferMemoryBarrier, 1> barriers2 = {
-            io[con_markovchain]->buffer_barrier(vk::AccessFlagBits::eShaderWrite,
-                                                  vk::AccessFlagBits::eShaderRead | vk::AccessFlagBits::eShaderWrite)};
-
-        cmd->barrier(vk::PipelineStageFlagBits::eComputeShader,
-                     vk::PipelineStageFlagBits::eComputeShader, barriers2);
     }
 
     const bool enable_volume = io.is_connected(con_volume);
@@ -379,6 +372,36 @@ void RendererMarkovChain::process(merian_nodes::GraphRun& run,
         });
 
         dump_lc = false;
+    }
+
+    if (!dumping_update_buffer && dump_update_buffer) {
+        dumping_update_buffer = true;
+        const std::size_t count = update_buffer_size;
+        const merian::MemoryAllocationHandle memory = allocator->getStaging()->cmd_from_device(
+            cmd, io[con_update_buffer], 0, sizeof(MCUpdate) * count);
+        run.sync_to_cpu([count, memory, this]() {
+            nlohmann::json j;
+
+            MCUpdate* buf = memory->map_as<MCUpdate>();
+            for (const MCUpdate* v = buf; v < buf + count; v++) {
+                nlohmann::json o;
+                o["update_count"] = v->update_count;
+                o["last_update_count"] = v->last_update_count;
+                o["target"] = fmt::format("{} {} {}", v->target.x, v->target.y, v->target.z);
+                o["weight"] = v->weight;
+                o["cos"] = v->cos;
+                o["pos"] = fmt::format("{} {} {}", v->pos.x, v->pos.y, v->pos.z);
+                o["normal"] = fmt::format("{} {} {}", v->normal.x, v->normal.y, v->normal.z);
+
+                j.emplace_back(o);
+            }
+            memory->unmap();
+            std::ofstream file("update_buffer_dump.json");
+            file << std::setw(2) << j << '\n';
+            dumping_update_buffer = false;
+        });
+
+        dump_update_buffer = false;
     }
 }
 
@@ -504,6 +527,13 @@ RendererMarkovChain::NodeStatusFlags RendererMarkovChain::properties(merian::Pro
                                      "Dumps the Light Cache as json into lc_dump.json");
     } else {
         config.output_text("Dumping to lc_dump.json...");
+    }
+
+    if (!dumping_update_buffer) {
+        dump_update_buffer = config.config_bool("Download Update Buffer",
+                                     "Dumps the Update Buffer as json into update_buffer_dump.json");
+    } else {
+        config.output_text("Dumping to update_buffer_dump.json...");
     }
 
     // Only require a pipeline recreation
