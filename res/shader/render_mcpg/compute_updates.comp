@@ -48,23 +48,14 @@ void main() {
         rng_state = update.rng_state;
 
         mc_state.N = min(mc_state.N + uint16_t(update.update_count), uint16_t(ML_MAX_N));
-        const float alpha = max(float(1) / float(mc_state.N), ML_MIN_ALPHA);
+        const float alpha = max(float(update.update_count) / float(mc_state.N), ML_MIN_ALPHA);
         
         float weight = update.weight / float(update.update_count);
         vec3 target = update.target / float(update.update_count);
         float cos = update.cos / float(update.update_count);
-        vec3 normal = update.normal / float(update.update_count);
-        vec3 pos = update.pos / float(update.update_count);
+        vec3 normal = update.normal;
+        vec3 pos = update.pos;
 
-        /*
-        mc_state.N = min(mc_state.N + 1s, uint16_t(ML_MAX_N));
-        const float alpha = max(1.0 / mc_state.N, ML_MIN_ALPHA);
-
-        float weight = update.weight;
-        vec3 target = update.target;
-        float cos = update.cos;
-
-        */
         mc_state.sum_w = mix(mc_state.sum_w, weight, alpha);
         mc_state.w_tgt = mix(mc_state.w_tgt, target, alpha);
         mc_state.w_cos = min(mix(mc_state.w_cos, cos, alpha), mc_state.sum_w);
@@ -80,8 +71,6 @@ void main() {
         update_buffer[update_buffer_idx].update_count = 0;
         update_buffer[update_buffer_idx].target = vec3(0);
         update_buffer[update_buffer_idx].weight = 0;
-        update_buffer[update_buffer_idx].cos = 0;      
-        update_buffer[update_buffer_idx].normal = vec3(0);      
-        update_buffer[update_buffer_idx].pos = vec3(0);      
+        update_buffer[update_buffer_idx].cos = 0;
     }
 }
