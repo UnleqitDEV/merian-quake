@@ -14,7 +14,7 @@
 
 // GENERAL
 
-#define mc_state_new() MCState(0, 0, 0, vec3(0.0), 0.0, 0.0, f16vec3(0), 0.0, 0s, 0s);
+#define mc_state_new() MCState(0, 0, vec3(0.0), 0.0, 0.0, f16vec3(0), 0.0, 0s, 0s);
 
 // return normalized direction (from pos)
 #define mc_state_dir(mc_state, pos) normalize((mc_state.sum_w > 0.0 ? mc_state.w_tgt / mc_state.sum_w : mc_state.w_tgt) - pos)
@@ -200,7 +200,7 @@ void send_update_to_buffer(const float weight, const vec3 target, const float co
 }
 
 // add sample to lobe via maximum likelihood estimator and exponentially weighted average
-
+/*
 void mc_state_add_sample(inout MCState mc_state,
                          const vec3 pos,         // position where the ray started
                          const float w,          // goodness
@@ -225,9 +225,9 @@ void mc_state_add_sample(inout MCState mc_state,
 
     send_update_to_buffer(w, w * target, cos, mc_state.N, index, target_mv, pos, normal);
 }
-
+*/
 // old mc add sample
-/*
+
 void mc_state_add_sample(inout MCState mc_state,
                          const vec3 pos,         // position where the ray started
                          const float w,          // goodness
@@ -243,8 +243,8 @@ void mc_state_add_sample(inout MCState mc_state,
 
     mc_state.mv = target_mv;
     mc_state.T = params.cl_time;
+    mc_state.update_count = mc_state.update_count + 1;
 
     mc_static_save(mc_state, pos, normal);
     mc_adaptive_save(mc_state, pos, normal);
 }
-*/

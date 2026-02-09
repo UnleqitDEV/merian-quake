@@ -42,6 +42,11 @@ void main() {
         return;
     }
 
+    mc_states[update_buffer_idx].last_update_count = mc_states[update_buffer_idx].update_count;
+    mc_states[update_buffer_idx].update_count = 0;
+
+    return;
+
     if(update_buffer[update_buffer_idx].update_count > 0) {
         MCUpdate update = update_buffer[update_buffer_idx];
         MCState mc_state = mc_states[update_buffer_idx];
