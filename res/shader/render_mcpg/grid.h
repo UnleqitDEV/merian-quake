@@ -4,8 +4,9 @@
 #define MERIAN_QUAKE_GRID_TYPE_QUADRATIC 1
 
 struct MCState {
-    uint update_count;
-    uint last_update_count;
+    uint lock;
+    uint update_succeeded;
+    uint update_canceled;
 
     vec3 w_tgt;
     float sum_w;

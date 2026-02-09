@@ -258,7 +258,7 @@ void RendererMarkovChain::process(merian_nodes::GraphRun& run,
         cmd->push_constant(pipe, render_info.uniform);
         cmd->dispatch(io[con_resolution], local_size_x, local_size_y);
 
-
+        /*
         // Update buffer
         const std::array<vk::BufferMemoryBarrier, 2> barriers = {
             io[con_update_buffer]->buffer_barrier(vk::AccessFlagBits::eShaderWrite, vk::AccessFlagBits::eShaderRead),
@@ -276,6 +276,7 @@ void RendererMarkovChain::process(merian_nodes::GraphRun& run,
         // does not work
         const uint32_t num_work_groups = (update_buffer_size + 63) / 64;
         cmd->dispatch(num_work_groups, 1, 1);
+        */
     }
 
     const bool enable_volume = io.is_connected(con_volume);
@@ -336,7 +337,8 @@ void RendererMarkovChain::process(merian_nodes::GraphRun& run,
                 o["w_cos"] = v->w_cos;
                 o["sum_w"] = v->sum_w;
                 o["w_tgt"] = fmt::format("{} {} {}", v->w_tgt.x, v->w_tgt.y, v->w_tgt.z);
-                o["last_update_count"] = v->last_update_count;
+                o["update_succeeded"] = v->update_succeeded;
+                o["update_canceled"] = v->update_canceled;
 
                 j.emplace_back(o);
             }

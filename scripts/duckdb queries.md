@@ -1,4 +1,4 @@
-## Updates sortieren
+## Updates per frame
 select last_update_count AS update_count, COUNT(*) AS count, ROUND(COUNT(*) * 100.0 / SUM(COUNT(*)) OVER (), 2) AS percent from read_json("C:\Users\utqns\Documents\Bachelorarbeit\codebase\merian-quake\build\mc_dump.json") where last_update_count > 0 group by last_update_count order by last_update_count;
 
 ┌──────────────┬────────┬─────────┐
@@ -41,3 +41,23 @@ select last_update_count AS update_count, COUNT(*) AS count, ROUND(COUNT(*) * 10
 │ 32 rows               3 columns │
 └─────────────────────────────────┘
 
+## Updates succeeded vs cancelled
+SELECT status, total, ROUND(total * 100.0 / SUM(total) OVER (), 2) AS percentage FROM (SELECT 'succeeded' AS status, SUM(update_succeeded) AS total FROM read_json("C:\Users\utqns\Documents\Bachelorarbeit\codebase\merian-quake\build\mc_dump.json") WHERE (update_canceled + update_succeeded) > 0 UNION ALL SELECT 'canceled' AS status, SUM(update_canceled) AS total FROM read_json("C:\Users\utqns\Documents\Bachelorarbeit\codebase\merian-quake\build\mc_dump.json") WHERE (update_canceled + update_succeeded) > 0);
+
+### 1. Run
+┌───────────┬────────────┬────────────┐
+│  status   │   total    │ percentage │
+│  varchar  │   int128   │   double   │
+├───────────┼────────────┼────────────┤
+│ succeeded │ 6243224079 │      89.14 │
+│ canceled  │  760661973 │      10.86 │
+└───────────┴────────────┴────────────┘
+
+### 2. Run
+┌───────────┬────────────┬────────────┐
+│  status   │   total    │ percentage │
+│  varchar  │   int128   │   double   │
+├───────────┼────────────┼────────────┤
+│ succeeded │ 4654721875 │      89.33 │
+│ canceled  │  555901336 │      10.67 │
+└───────────┴────────────┴────────────┘
