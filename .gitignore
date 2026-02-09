@@ -12,3 +12,4 @@ merian-quake.json
 
 # Quake data files (too large for git)
 quakedir/**/*.pak
+*.exe
