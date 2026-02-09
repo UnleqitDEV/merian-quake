@@ -14,7 +14,7 @@
 
 // GENERAL
 
-#define mc_state_new() MCState(0, 0, 0, vec3(0.0), 0.0, 0.0, f16vec3(0), 0.0, 0s, 0s);
+#define mc_state_new() MCState(vec3(0.0), 0.0, 0.0, vec3(0.0), 0.0, 0.0, f16vec3(0), 0.0, 0s, 0s);
 
 // return normalized direction (from pos)
 #define mc_state_dir(mc_state, pos) normalize((mc_state.sum_w > 0.0 ? mc_state.w_tgt / mc_state.sum_w : mc_state.w_tgt) - pos)
@@ -107,13 +107,7 @@ void mc_adaptive_save(in MCState mc_state, const vec3 pos, const vec3 normal) {
     mc_adaptive_buffer_index(pos, normal, buffer_index, hash);
 
     mc_state.hash = hash;
-    mc_states[buffer_index].w_tgt = mc_state.w_tgt;
-    mc_states[buffer_index].sum_w = mc_state.sum_w;
-    mc_states[buffer_index].w_cos = mc_state.w_cos;
-    mc_states[buffer_index].mv = mc_state.mv;
-    mc_states[buffer_index].T = mc_state.T;
-    mc_states[buffer_index].N = mc_state.N;
-    mc_states[buffer_index].hash = mc_state.hash;
+    mc_states[buffer_index] = mc_state;
 }
 
 
@@ -159,13 +153,7 @@ void mc_static_save(in MCState mc_state, const vec3 pos, const vec3 normal) {
     mc_static_buffer_index(pos, buffer_index, hash);
 
     mc_state.hash = hash;
-    mc_states[buffer_index].w_tgt = mc_state.w_tgt;
-    mc_states[buffer_index].sum_w = mc_state.sum_w;
-    mc_states[buffer_index].w_cos = mc_state.w_cos;
-    mc_states[buffer_index].mv = mc_state.mv;
-    mc_states[buffer_index].T = mc_state.T;
-    mc_states[buffer_index].N = mc_state.N;
-    mc_states[buffer_index].hash = mc_state.hash;
+    mc_states[buffer_index] = mc_state;
 }
 
 void send_update_to_buffer(const float weight, const vec3 target, const float cos, const uint16_t N, const uint index, 
@@ -245,6 +233,13 @@ void mc_state_add_sample(inout MCState mc_state,
                          const float w,          // goodness
                          const vec3 target, const f16vec3 target_mv, const vec3 normal, const uint mc_buffer_index) {    // ray hit point
 
+
+    #define mc_cos(mc_state) mc_state.sum_w > 0.0 ? mc_state.w_cos / mc_state.sum_w : mc_state.w_cos
+
+    vec3 prev_tgt = mc_state_pos(mc_state);
+    float prev_cos = mc_cos(mc_state);
+    float prev_w = mc_state.sum_w;
+
     mc_state.N = min(mc_state.N + 1s, uint16_t(ML_MAX_N));
     const float alpha = max(1.0 / mc_state.N, ML_MIN_ALPHA);
 
@@ -256,53 +251,10 @@ void mc_state_add_sample(inout MCState mc_state,
     mc_state.mv = target_mv;
     mc_state.T = params.cl_time;
 
-    uint adaptive_idx; uint static_idx; uint16_t adaptive_hash; uint16_t static_hash;
-    mc_adaptive_buffer_index(pos, normal, adaptive_idx, adaptive_hash);
-    mc_static_buffer_index(pos, static_idx, static_hash);
-
+    mc_state.tgt_change = mc_state_pos(mc_state) - prev_tgt;
+    mc_state.cos_change = mc_cos(mc_state) - prev_cos;
+    mc_state.w_change = mc_state.sum_w - prev_w;
     
-    uint old = atomicExchange(mc_states[adaptive_idx].lock, params.frame);
-    if (old == params.frame) {
-        // did not get lock
-        atomicAdd(mc_states[adaptive_idx].update_canceled, 1);
-        return;
-    }
-    
-    memoryBarrierBuffer();
-
-    mc_state.hash = adaptive_hash;
-    mc_states[adaptive_idx].w_tgt = mc_state.w_tgt;
-    mc_states[adaptive_idx].sum_w = mc_state.sum_w;
-    mc_states[adaptive_idx].w_cos = mc_state.w_cos;
-    mc_states[adaptive_idx].mv = mc_state.mv;
-    mc_states[adaptive_idx].T = mc_state.T;
-    mc_states[adaptive_idx].N = mc_state.N;
-    mc_states[adaptive_idx].hash = mc_state.hash;
-    atomicAdd(mc_states[adaptive_idx].update_succeeded, 1);
-    mc_states[adaptive_idx].lock = 0;
-
-    memoryBarrierBuffer();
-
-    old = atomicExchange(mc_states[static_idx].lock, params.frame);
-    if (old == params.frame) {
-        // did not get lock
-        atomicAdd(mc_states[static_idx].update_canceled, 1);
-        return;
-    }
-    
-    memoryBarrierBuffer();
-
-    mc_state.hash = static_hash;
-    mc_states[static_idx].w_tgt = mc_state.w_tgt;
-    mc_states[static_idx].sum_w = mc_state.sum_w;
-    mc_states[static_idx].w_cos = mc_state.w_cos;
-    mc_states[static_idx].mv = mc_state.mv;
-    mc_states[static_idx].T = mc_state.T;
-    mc_states[static_idx].N = mc_state.N;
-    mc_states[static_idx].hash = mc_state.hash;
-    atomicAdd(mc_states[static_idx].update_succeeded, 1);
-    mc_states[static_idx].lock = 0;
-
-    memoryBarrierBuffer();
-
+    mc_static_save(mc_state, pos, normal);
+    mc_adaptive_save(mc_state, pos, normal);
 }
