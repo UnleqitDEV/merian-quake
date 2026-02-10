@@ -225,11 +225,19 @@ void mc_state_add_sample(inout MCState mc_state,
 }
 
 // old mc add sample
-/*
-void mc_state_add_sample(inout MCState mc_state,
+
+void mc_state_add_sample(inout MCState mc_state_old,
                          const vec3 pos,         // position where the ray started
                          const float w,          // goodness
                          const vec3 target, const f16vec3 target_mv, const vec3 normal, const uint mc_buffer_index) {    // ray hit point
+
+    uint old = atomicExchange(mc_states[mc_buffer_index].lock, params.frame);
+    if (old == params.frame) {
+        // did not get lock
+        atomicAdd(mc_states[mc_buffer_index].update_canceled, 1);
+        return;
+    }
+    MCState mc_state = mc_states[mc_buffer_index];
 
     mc_state.N = min(mc_state.N + 1s, uint16_t(ML_MAX_N));
     const float alpha = max(1.0 / mc_state.N, ML_MIN_ALPHA);
@@ -242,7 +250,57 @@ void mc_state_add_sample(inout MCState mc_state,
     mc_state.mv = target_mv;
     mc_state.T = params.cl_time;
 
-    mc_static_save(mc_state, pos, normal);
-    mc_adaptive_save(mc_state, pos, normal);
+    uint adaptive_idx; uint static_idx; uint16_t adaptive_hash; uint16_t static_hash;
+    mc_adaptive_buffer_index(pos, normal, adaptive_idx, adaptive_hash);
+    mc_static_buffer_index(pos, static_idx, static_hash);
+
+    
+    old = atomicExchange(mc_states[adaptive_idx].lock, params.frame);
+    if (old == params.frame) {
+        // did not get lock
+        atomicAdd(mc_states[adaptive_idx].update_canceled, 1);
+        mc_states[mc_buffer_index].lock = 0;
+        return;
+    }
+    
+    memoryBarrierBuffer();
+
+    mc_state.hash = adaptive_hash;
+    mc_states[adaptive_idx].w_tgt = mc_state.w_tgt;
+    mc_states[adaptive_idx].sum_w = mc_state.sum_w;
+    mc_states[adaptive_idx].w_cos = mc_state.w_cos;
+    mc_states[adaptive_idx].mv = mc_state.mv;
+    mc_states[adaptive_idx].T = mc_state.T;
+    mc_states[adaptive_idx].N = mc_state.N;
+    mc_states[adaptive_idx].hash = mc_state.hash;
+    atomicAdd(mc_states[adaptive_idx].update_succeeded, 1);
+    mc_states[adaptive_idx].lock = 0;
+
+    memoryBarrierBuffer();
+
+    old = atomicExchange(mc_states[static_idx].lock, params.frame);
+    if (old == params.frame) {
+        // did not get lock
+        atomicAdd(mc_states[static_idx].update_canceled, 1);
+        mc_states[mc_buffer_index].lock = 0;
+        return;
+    }
+    
+    memoryBarrierBuffer();
+
+    mc_state.hash = static_hash;
+    mc_states[static_idx].w_tgt = mc_state.w_tgt;
+    mc_states[static_idx].sum_w = mc_state.sum_w;
+    mc_states[static_idx].w_cos = mc_state.w_cos;
+    mc_states[static_idx].mv = mc_state.mv;
+    mc_states[static_idx].T = mc_state.T;
+    mc_states[static_idx].N = mc_state.N;
+    mc_states[static_idx].hash = mc_state.hash;
+    atomicAdd(mc_states[static_idx].update_succeeded, 1);
+    mc_states[static_idx].lock = 0;
+
+    mc_states[mc_buffer_index].lock = 0;
+
+    memoryBarrierBuffer();
+
 }
-*/
