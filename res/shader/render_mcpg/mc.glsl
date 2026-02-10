@@ -14,7 +14,7 @@
 
 // GENERAL
 
-#define mc_state_new() MCState(vec3(0.0), 0.0, 0.0, vec3(0.0), 0.0, 0.0, f16vec3(0), 0.0, 0s, 0s);
+#define mc_state_new() MCState(0, 0.0, 0.0, vec3(0.0), 0.0, 0.0, f16vec3(0), 0.0, 0s, 0s);
 
 // return normalized direction (from pos)
 #define mc_state_dir(mc_state, pos) normalize((mc_state.sum_w > 0.0 ? mc_state.w_tgt / mc_state.sum_w : mc_state.w_tgt) - pos)
@@ -237,7 +237,7 @@ void mc_state_add_sample(inout MCState mc_state,
     #define mc_cos(mc_state) mc_state.sum_w > 0.0 ? mc_state.w_cos / mc_state.sum_w : mc_state.w_cos
 
     vec3 prev_tgt = mc_state_pos(mc_state);
-    float prev_cos = mc_cos(mc_state);
+    float prev_cos = mc_state_mean_cos(mc_state, pos);
     float prev_w = mc_state.sum_w;
 
     mc_state.N = min(mc_state.N + 1s, uint16_t(ML_MAX_N));
@@ -251,8 +251,8 @@ void mc_state_add_sample(inout MCState mc_state,
     mc_state.mv = target_mv;
     mc_state.T = params.cl_time;
 
-    mc_state.tgt_change = mc_state_pos(mc_state) - prev_tgt;
-    mc_state.cos_change = mc_cos(mc_state) - prev_cos;
+    mc_state.tgt_change = length(mc_state_pos(mc_state) - prev_tgt);
+    mc_state.cos_change = mc_state_mean_cos(mc_state, pos) - prev_cos;
     mc_state.w_change = mc_state.sum_w - prev_w;
     
     mc_static_save(mc_state, pos, normal);

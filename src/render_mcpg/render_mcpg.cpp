@@ -335,7 +335,7 @@ void RendererMarkovChain::process(merian_nodes::GraphRun& run,
                 o["w_cos"] = v->w_cos;
                 o["sum_w"] = v->sum_w;
                 o["w_tgt"] = fmt::format("{} {} {}", v->w_tgt.x, v->w_tgt.y, v->w_tgt.z);
-                o["tgt_change"] = {{"x", v->tgt_change.x}, {"y", v->tgt_change.y}, {"z", v->tgt_change.z}};
+                o["tgt_change"] = v->tgt_change;
                 o["w_change"] = v->w_change;
                 o["cos_change"] = v->cos_change;
 
