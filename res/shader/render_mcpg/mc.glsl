@@ -158,26 +158,36 @@ void mc_static_save(in MCState mc_state, const vec3 pos, const vec3 normal) {
 
 void send_update_to_buffer(const float weight, const vec3 target, const float cos, const uint16_t N, const uint index, 
     const f16vec3 target_mv, const vec3 pos, const vec3 normal) {
-
-    /*uint prev = atomicExchange(update_buffer[index].update_count, 1);
+    
+    /*
+    uint prev = atomicExchange(update_buffer[index].update_count, 1);
     if(prev != 0) {
         return;
-    }*/
+    }
+    */
 
-    atomicAdd(update_buffer[index].weight, weight);
-    atomicAdd(update_buffer[index].target.x, target.x);
-    atomicAdd(update_buffer[index].target.y, target.y);
-    atomicAdd(update_buffer[index].target.z, target.z);
-    atomicAdd(update_buffer[index].cos, cos);
     uint old = atomicAdd(update_buffer[index].update_count, 1);
+    if (old < 1) {
+        atomicAdd(update_buffer[index].weight, weight);
+        atomicAdd(update_buffer[index].target.x, weight * target.x);
+        atomicAdd(update_buffer[index].target.y, weight * target.y);
+        atomicAdd(update_buffer[index].target.z, weight * target.z);
+        atomicAdd(update_buffer[index].cos, cos);
 
-    if(old == 0) {
-        update_buffer[index].mv = target_mv;
-        update_buffer[index].T = params.cl_time;
-        update_buffer[index].N = N;
-        update_buffer[index].pos = pos;
-        update_buffer[index].normal = normal;
-        update_buffer[index].rng_state = rng_state;
+        //uint old = 0;
+        if (old == 0) {
+            update_buffer[index].mv = target_mv;
+            update_buffer[index].T = params.cl_time;
+            update_buffer[index].N = N;
+            update_buffer[index].pos = pos;
+            update_buffer[index].normal = normal;
+            update_buffer[index].rng_state = rng_state;
+        }
+        update_buffer[index].weights[old] = weight;
+        update_buffer[index].directions[old] = normalize(target - pos);
+    }
+    else {
+        atomicAdd(update_buffer[index].update_count, -1);
     }
     
     /*
@@ -200,7 +210,7 @@ void send_update_to_buffer(const float weight, const vec3 target, const float co
 }
 
 // add sample to lobe via maximum likelihood estimator and exponentially weighted average
-/*
+
 void mc_state_add_sample(inout MCState mc_state,
                          const vec3 pos,         // position where the ray started
                          const float w,          // goodness
@@ -223,11 +233,11 @@ void mc_state_add_sample(inout MCState mc_state,
 
     float cos = w * max(0, dot(normalize(target - pos), mc_state_dir(mc_state, pos)));
 
-    send_update_to_buffer(w, w * target, cos, mc_state.N, index, target_mv, pos, normal);
+    send_update_to_buffer(w, target, cos, mc_state.N, index, target_mv, pos, normal);
 }
-*/
-// old mc add sample
 
+// old mc add sample
+/*
 void mc_state_add_sample(inout MCState mc_state,
                          const vec3 pos,         // position where the ray started
                          const float w,          // goodness
@@ -258,3 +268,4 @@ void mc_state_add_sample(inout MCState mc_state,
     mc_static_save(mc_state, pos, normal);
     mc_adaptive_save(mc_state, pos, normal);
 }
+*/

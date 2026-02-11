@@ -63,11 +63,16 @@ void main() {
         mc_state.sum_w = mix(mc_state.sum_w, weight, alpha);
         mc_state.w_tgt = mix(mc_state.w_tgt, target, alpha);
 
-        if(update.clear) {
-            mc_state.w_cos = min(1, mc_state.sum_w);
-        } else {
-            mc_state.w_cos = min(mix(mc_state.w_cos, cos, alpha), mc_state.sum_w);
+        cos = 0;
+        for (uint i = 0; i < min(update.update_count, 10); i++) {
+            cos += update.weights[i] * max(0, dot(update.directions[i], mc_state_dir(mc_state, pos)));
         }
+        cos /= float(min(update.update_count, 10));
+        
+        //cos = update.weights[0] * max(0, dot(update.directions[0], mc_state_dir(mc_state, pos)));
+        
+        mc_state.w_cos = min(mix(mc_state.w_cos, cos, alpha), mc_state.sum_w);
+        
 
         mc_state.mv = update.mv;
         mc_state.T = update.T;
