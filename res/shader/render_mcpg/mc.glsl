@@ -167,7 +167,7 @@ void send_update_to_buffer(const float weight, const vec3 target, const float co
     */
 
     uint old = atomicAdd(update_buffer[index].update_count, 1);
-    if (old < 1) {
+    if (old < 10) {
         atomicAdd(update_buffer[index].weight, weight);
         atomicAdd(update_buffer[index].target.x, weight * target.x);
         atomicAdd(update_buffer[index].target.y, weight * target.y);
@@ -221,9 +221,12 @@ void mc_state_add_sample(inout MCState mc_state,
         // give it the index of the adaptive grid
         uint16_t hash;
         mc_adaptive_buffer_index(pos, normal, index, hash);
-
-        update_buffer[index].clear = true;        
+    
+        update_buffer[index].clear = true;    
     }
+    // seems to converge better when using a random buffer index and always creating a new mc state
+    //index = atomicAdd(update_buffer[0].update_count, 1);
+    //update_buffer[index].clear = true;    
 
     // update mc state for cos calculation
     mc_state.N = min(mc_state.N + 1s, uint16_t(ML_MAX_N));
