@@ -23,11 +23,6 @@ struct MCState {
 struct MCUpdate {
     uint update_count;
     uint last_update_count;
-    bool clear;
-
-    vec3 target;
-    float weight;
-    float cos;
 
     f16vec3 mv;
     float T;
@@ -37,11 +32,7 @@ struct MCUpdate {
     vec3 targets[10];
     vec3 positions[10];
 
-    vec3 pos;
     vec3 normal;
-    uint rng_state;
-    
-    uint16_t N;
 };
 
 struct LightCacheVertex {

@@ -392,10 +392,6 @@ void RendererMarkovChain::process(merian_nodes::GraphRun& run,
                 nlohmann::json o;
                 o["update_count"] = v->update_count;
                 o["last_update_count"] = v->last_update_count;
-                o["target"] = fmt::format("{} {} {}", v->target.x, v->target.y, v->target.z);
-                o["weight"] = v->weight;
-                o["cos"] = v->cos;
-                o["pos"] = fmt::format("{} {} {}", v->pos.x, v->pos.y, v->pos.z);
                 o["ids"] = v->ids;
                 o["weights"] = v->weights;
                 //o["targets"] = v->targets;

@@ -156,7 +156,7 @@ void mc_static_save(in MCState mc_state, const vec3 pos, const vec3 normal) {
     mc_states[buffer_index] = mc_state;
 }
 
-void send_update_to_buffer(const float weight, const vec3 target, const float cos, const uint16_t N, const uint index, 
+void send_update_to_buffer(const float weight, const vec3 target, const uint index, 
     const f16vec3 target_mv, const vec3 pos, const vec3 normal, uint id) {
     
     /*
@@ -168,20 +168,11 @@ void send_update_to_buffer(const float weight, const vec3 target, const float co
 
     uint old = atomicAdd(update_buffer[index].update_count, 1);
     if (old < 10) {
-        atomicAdd(update_buffer[index].weight, weight);
-        atomicAdd(update_buffer[index].target.x, weight * target.x);
-        atomicAdd(update_buffer[index].target.y, weight * target.y);
-        atomicAdd(update_buffer[index].target.z, weight * target.z);
-        atomicAdd(update_buffer[index].cos, cos);
-
         //uint old = 0;
         if (old == 0) {
             update_buffer[index].mv = target_mv;
             update_buffer[index].T = params.cl_time;
-            update_buffer[index].N = N;
-            update_buffer[index].pos = pos;
             update_buffer[index].normal = normal;
-            update_buffer[index].rng_state = rng_state;
         }
         update_buffer[index].ids[old] = id;
         update_buffer[index].targets[old] = target;
@@ -222,23 +213,13 @@ void mc_state_add_sample(inout MCState mc_state,
     if(index == -1) {
         // give it the index of the adaptive grid
         uint16_t hash;
-        mc_adaptive_buffer_index(pos, normal, index, hash);
-    
-        update_buffer[index].clear = true;    
+        mc_adaptive_buffer_index(pos, normal, index, hash); 
     }
     // seems to converge better when using a random buffer index and always creating a new mc state
     //index = atomicAdd(update_buffer[0].update_count, 1) % UPDATE_BUFFER_SIZE;
-    //update_buffer[index].clear = true;    
+    //update_buffer[index].clear = true;
 
-    // update mc state for cos calculation
-    mc_state.N = min(mc_state.N + 1s, uint16_t(ML_MAX_N));
-    const float alpha = max(1.0 / mc_state.N, ML_MIN_ALPHA);
-    mc_state.sum_w = mix(mc_state.sum_w, w, alpha);
-    mc_state.w_tgt = mix(mc_state.w_tgt, w * target, alpha);
-
-    float cos = w * max(0, dot(normalize(target - pos), mc_state_dir(mc_state, pos)));
-
-    send_update_to_buffer(w, target, cos, mc_state.N, index, target_mv, pos, normal, mc_state.id);
+    send_update_to_buffer(w, target, index, target_mv, pos, normal, mc_state.id);
 }
 
 // old mc add sample
