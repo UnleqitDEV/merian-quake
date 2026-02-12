@@ -105,8 +105,10 @@ void main() {
         mc_state.T = update.T;
 
         //mc_states[update_buffer_idx] = mc_state;
-        mc_static_save(mc_state, pos, update.normal);
-        mc_adaptive_save(mc_state, pos, update.normal);
+        for (int i = 0; i < update.update_count; i++) {
+            mc_static_save(mc_state, pos, update.normal);
+            mc_adaptive_save(mc_state, pos, update.normal);
+        }
 
         update_buffer[update_buffer_idx].last_update_count = update.update_count;
         update_buffer[update_buffer_idx].update_count = 0;
