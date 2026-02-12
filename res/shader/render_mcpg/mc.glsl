@@ -14,7 +14,7 @@
 
 // GENERAL
 
-#define mc_state_new() MCState(0, 0.0, 0.0, vec3(0.0), 0.0, 0.0, f16vec3(0), 0.0, 0s, 0s);
+#define mc_state_new() MCState(uint(XorShift32(rng_state) * float(0xFFFFFFFFu)), 0.0, 0.0, 0.0, vec3(0.0), 0.0, 0.0, f16vec3(0), 0.0, 0s, 0s);
 
 // return normalized direction (from pos)
 #define mc_state_dir(mc_state, pos) normalize((mc_state.sum_w > 0.0 ? mc_state.w_tgt / mc_state.sum_w : mc_state.w_tgt) - pos)
@@ -157,7 +157,7 @@ void mc_static_save(in MCState mc_state, const vec3 pos, const vec3 normal) {
 }
 
 void send_update_to_buffer(const float weight, const vec3 target, const float cos, const uint16_t N, const uint index, 
-    const f16vec3 target_mv, const vec3 pos, const vec3 normal) {
+    const f16vec3 target_mv, const vec3 pos, const vec3 normal, uint id) {
     
     /*
     uint prev = atomicExchange(update_buffer[index].update_count, 1);
@@ -183,8 +183,10 @@ void send_update_to_buffer(const float weight, const vec3 target, const float co
             update_buffer[index].normal = normal;
             update_buffer[index].rng_state = rng_state;
         }
+        update_buffer[index].ids[old] = id;
+        update_buffer[index].targets[old] = target;
         update_buffer[index].weights[old] = weight;
-        update_buffer[index].directions[old] = normalize(target - pos);
+        update_buffer[index].positions[old] = pos;
     }
     else {
         atomicAdd(update_buffer[index].update_count, -1);
@@ -225,8 +227,8 @@ void mc_state_add_sample(inout MCState mc_state,
         update_buffer[index].clear = true;    
     }
     // seems to converge better when using a random buffer index and always creating a new mc state
-    index = atomicAdd(update_buffer[0].update_count, 1) % UPDATE_BUFFER_SIZE;
-    update_buffer[index].clear = true;    
+    //index = atomicAdd(update_buffer[0].update_count, 1) % UPDATE_BUFFER_SIZE;
+    //update_buffer[index].clear = true;    
 
     // update mc state for cos calculation
     mc_state.N = min(mc_state.N + 1s, uint16_t(ML_MAX_N));
@@ -236,7 +238,7 @@ void mc_state_add_sample(inout MCState mc_state,
 
     float cos = w * max(0, dot(normalize(target - pos), mc_state_dir(mc_state, pos)));
 
-    send_update_to_buffer(w, target, cos, mc_state.N, index, target_mv, pos, normal);
+    send_update_to_buffer(w, target, cos, mc_state.N, index, target_mv, pos, normal, mc_state.id);
 }
 
 // old mc add sample

@@ -36,6 +36,19 @@ uint rng_state;
 
 //layout(local_size_x = 64, local_size_y = 1, local_size_z = 1) in;
 
+void mc_update(inout MCState mc_state,
+                         const vec3 pos,         // position where the ray started
+                         const float w,          // goodness
+                         const vec3 target) {    // ray hit point
+
+    mc_state.N = min(mc_state.N + 1s, uint16_t(ML_MAX_N));
+    const float alpha = max(1.0 / mc_state.N, ML_MIN_ALPHA);
+   
+    mc_state.sum_w = mix(mc_state.sum_w, w,          alpha);
+    mc_state.w_tgt = mix(mc_state.w_tgt, w * target, alpha);
+    mc_state.w_cos = min(mix(mc_state.w_cos, w * max(0, dot(normalize(target - pos), mc_state_dir(mc_state, pos))), alpha), mc_state.sum_w);
+}
+
 void main() {
     #define update_buffer_idx gl_GlobalInvocationID.x
     if (update_buffer_idx >= UPDATE_BUFFER_SIZE) {
@@ -51,6 +64,20 @@ void main() {
             mc_state = mc_state_new();
         }
 
+        float sum = 0;
+        vec3 pos = vec3(0);
+        for (int i = 0; i < update.update_count; i++) {
+            MCState state = mc_state_new();
+            mc_update(state, update.positions[i], update.weights[i], update.targets[i]);
+            sum += state.sum_w;
+            if(XorShift32(rng_state) < state.sum_w / sum) {
+                mc_state = state;
+                pos = update.positions[i];
+            }
+        }
+        
+
+        /*
         mc_state.N = min(mc_state.N + uint16_t(update.update_count), uint16_t(ML_MAX_N));
         const float alpha = max(float(update.update_count) / float(mc_state.N), ML_MIN_ALPHA);
         
@@ -72,14 +99,14 @@ void main() {
         //cos = update.weights[0] * max(0, dot(update.directions[0], mc_state_dir(mc_state, pos)));
         
         mc_state.w_cos = min(mix(mc_state.w_cos, cos, alpha), mc_state.sum_w);
-        
+        */
 
         mc_state.mv = update.mv;
         mc_state.T = update.T;
 
         //mc_states[update_buffer_idx] = mc_state;
-        mc_static_save(mc_state, pos, normal);
-        mc_adaptive_save(mc_state, pos, normal);
+        mc_static_save(mc_state, pos, update.normal);
+        mc_adaptive_save(mc_state, pos, update.normal);
 
         update_buffer[update_buffer_idx].last_update_count = update.update_count;
         update_buffer[update_buffer_idx].update_count = 0;

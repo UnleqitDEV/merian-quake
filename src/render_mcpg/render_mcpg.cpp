@@ -330,6 +330,7 @@ void RendererMarkovChain::process(merian_nodes::GraphRun& run,
             MCState* buf = memory->map_as<MCState>();
             for (const MCState* v = buf; v < buf + count; v++) {
                 nlohmann::json o;
+                o["id"] = v->id;
                 o["N"] = v->N;
                 o["hash"] = v->hash;
                 o["w_cos"] = v->w_cos;
@@ -395,6 +396,17 @@ void RendererMarkovChain::process(merian_nodes::GraphRun& run,
                 o["weight"] = v->weight;
                 o["cos"] = v->cos;
                 o["pos"] = fmt::format("{} {} {}", v->pos.x, v->pos.y, v->pos.z);
+                o["ids"] = v->ids;
+                o["weights"] = v->weights;
+                //o["targets"] = v->targets;
+                o["targets"] = fmt::format("[{}]", 
+                    fmt::join(v->targets | std::views::transform([](const auto& d) {
+                        return fmt::format("({:.3f}, {:.3f}, {:.3f})", d.x, d.y, d.z);
+                    }), ", "));
+                o["positions"] = fmt::format("[{}]", 
+                    fmt::join(v->positions | std::views::transform([](const auto& d) {
+                        return fmt::format("({:.3f}, {:.3f}, {:.3f})", d.x, d.y, d.z);
+                    }), ", "));
                 o["normal"] = fmt::format("{} {} {}", v->normal.x, v->normal.y, v->normal.z);
 
                 j.emplace_back(o);

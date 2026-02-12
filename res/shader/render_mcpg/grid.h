@@ -4,6 +4,7 @@
 #define MERIAN_QUAKE_GRID_TYPE_QUADRATIC 1
 
 struct MCState {
+    uint id;
     float tgt_change;
     float w_change;
     float cos_change;
@@ -31,8 +32,10 @@ struct MCUpdate {
     f16vec3 mv;
     float T;
 
+    uint ids[10];
     float weights[10];
-    vec3 directions[10];
+    vec3 targets[10];
+    vec3 positions[10];
 
     vec3 pos;
     vec3 normal;
