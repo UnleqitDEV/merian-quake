@@ -24,15 +24,14 @@ struct MCUpdate {
     uint update_count;
     uint last_update_count;
 
-    f16vec3 mv;
     float T;
-
+    f16vec3 mv[10];
     uint ids[10];
     float weights[10];
     vec3 targets[10];
     vec3 positions[10];
+    vec3 normals[10];
 
-    vec3 normal;
 };
 
 struct LightCacheVertex {

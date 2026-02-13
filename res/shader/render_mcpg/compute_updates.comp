@@ -41,7 +41,7 @@ uint rng_state;
 void mc_update(inout MCState mc_state,
                          const vec3 pos,         // position where the ray started
                          const float w,          // goodness
-                         const vec3 target) {    // ray hit point
+                         const vec3 target, const f16vec3 mv) {    // ray hit point
 
     mc_state.N = min(mc_state.N + 1s, uint16_t(ML_MAX_N));
     const float alpha = max(1.0 / mc_state.N, ML_MIN_ALPHA);
@@ -49,6 +49,8 @@ void mc_update(inout MCState mc_state,
     mc_state.sum_w = mix(mc_state.sum_w, w,          alpha);
     mc_state.w_tgt = mix(mc_state.w_tgt, w * target, alpha);
     mc_state.w_cos = min(mix(mc_state.w_cos, w * max(0, dot(normalize(target - pos), mc_state_dir(mc_state, pos))), alpha), mc_state.sum_w);
+
+    mc_state.mv = mv;
 }
 
 void main() {
@@ -65,6 +67,7 @@ void main() {
 
         float sum = 0;
         vec3 pos = vec3(0);
+        vec3 normal = vec3(0);
         MCState new_state;
 
         for (int i = 0; i < update.update_count; i++) {
@@ -72,7 +75,7 @@ void main() {
             if (mc_state.id != update.ids[i]) {
                 state = mc_state_new();
             }
-            mc_update(state, update.positions[i], update.weights[i], update.targets[i]);
+            mc_update(state, update.positions[i], update.weights[i], update.targets[i], update.mv[i]);
 
             if(mc_state.id == state.id) {
                 mc_state = state;
@@ -82,14 +85,13 @@ void main() {
             if(XorShift32(rng_state) < state.sum_w / sum) {
                 new_state = state;
                 pos = update.positions[i];
+                normal = update.normals[i];
             }
         }
 
-        new_state.mv = update.mv;
         new_state.T = update.T;
 
-        //mc_states[update_buffer_idx] = mc_state;
-        for (int i = 0; i < 10; i++) {
+        for (int i = 0; i < update.update_count; i++) {
             // static save
             {
                 uint buffer_index; uint16_t hash;
@@ -97,19 +99,20 @@ void main() {
 
                 new_state.hash = hash;
                 MCState old_state = mc_states[buffer_index];
-                if(XorShift32(rng_state) < new_state.sum_w / (new_state.sum_w + old_state.sum_w)) {
+                if(old_state.id == new_state.id || XorShift32(rng_state) < new_state.sum_w / (new_state.sum_w + old_state.sum_w)) {
                     mc_states[buffer_index] = new_state;
                 }
             }
+            //mc_static_save(new_state, pos, normal);
 
             // adaptive save
             {
                 uint buffer_index; uint16_t hash;
-                mc_adaptive_buffer_index(pos, update.normal, buffer_index, hash);
+                mc_adaptive_buffer_index(pos, normal, buffer_index, hash);
 
                 new_state.hash = hash;
                 MCState old_state = mc_states[buffer_index];
-                if(XorShift32(rng_state) < new_state.sum_w / (new_state.sum_w + old_state.sum_w)) {
+                if(old_state.id == new_state.id || XorShift32(rng_state) < new_state.sum_w / (new_state.sum_w + old_state.sum_w)) {
                     mc_states[buffer_index] = new_state;
                 }
             }

@@ -403,7 +403,6 @@ void RendererMarkovChain::process(merian_nodes::GraphRun& run,
                     fmt::join(v->positions | std::views::transform([](const auto& d) {
                         return fmt::format("({:.3f}, {:.3f}, {:.3f})", d.x, d.y, d.z);
                     }), ", "));
-                o["normal"] = fmt::format("{} {} {}", v->normal.x, v->normal.y, v->normal.z);
 
                 j.emplace_back(o);
             }

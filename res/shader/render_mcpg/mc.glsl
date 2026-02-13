@@ -170,10 +170,10 @@ void send_update_to_buffer(const float weight, const vec3 target, const uint ind
     if (old < 10) {
         //uint old = 0;
         if (old == 0) {
-            update_buffer[index].mv = target_mv;
             update_buffer[index].T = params.cl_time;
-            update_buffer[index].normal = normal;
         }
+        update_buffer[index].normals[old] = normal;
+        update_buffer[index].mv[old] = target_mv;
         update_buffer[index].ids[old] = id;
         update_buffer[index].targets[old] = target;
         update_buffer[index].weights[old] = weight;
@@ -217,7 +217,6 @@ void mc_state_add_sample(inout MCState mc_state,
     }
     // seems to converge better when using a random buffer index and always creating a new mc state
     //index = atomicAdd(update_buffer[0].update_count, 1) % UPDATE_BUFFER_SIZE;
-    //update_buffer[index].clear = true;
 
     send_update_to_buffer(w, target, index, target_mv, pos, normal, mc_state.id);
 }
